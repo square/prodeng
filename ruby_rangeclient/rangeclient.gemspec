@@ -12,6 +12,7 @@ Gem::Specification.new do |s|
   s.required_rubygems_version = ">= 1.3.6"
 
   s.add_dependency "rdoc"
+  s.add_dependency "rest-client"
   s.files        = Dir.glob("lib/**/*") + Dir.glob("bin/*") + %w(README.md)
   s.extra_rdoc_files = ["LICENSE.md"]
   s.rdoc_options = ["--charset=UTF-8"]
