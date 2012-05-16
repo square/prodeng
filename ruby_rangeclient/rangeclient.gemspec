@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.email       = ["evan@squareup.com"]
   s.summary     = "Simple ranged client for ruby."
   s.description = "Use with ranged from https://github.com/ytoolshed/range"
-  s.homepage    = "https://github.com/square/prodeng/ruby_rangeclient"
+  s.homepage    = "https://github.com/square/prodeng/tree/master/ruby_rangeclient"
 
   s.required_rubygems_version = ">= 1.3.6"
 
