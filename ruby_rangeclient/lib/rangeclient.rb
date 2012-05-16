@@ -19,7 +19,6 @@ class Range::Client
   
   def expand(arg)
     escaped_arg = CGI.escape arg
-    puts "http://#@options[:host]}:#{@options[:port]}/range/list?#{escaped_arg}"
     res = RestClient.get "http://#{@options[:host]}:#{@options[:port]}/range/list?#{escaped_arg}"
     return res.split "\n"
   end
