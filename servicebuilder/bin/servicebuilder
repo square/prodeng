@@ -1,0 +1,328 @@
+#!/usr/bin/ruby
+#
+# servicebuilder - a tool for building runit directory structures from
+# a simple YAML configuration.  Tested with ruby 1.8.
+#
+# Usage:
+#   servicebuilder -c CONF_DIR -s STAGING_DIRECTORY -d INSTALL_DIRECTORY
+#
+#  The STAGING_DIRECTORY is where your service directories will be created.
+#  Runit should *not* be monitoring this directory.  To have runit notice
+#  a service, it will be symlinked into the INSTALL_DIRECTORY.  Runit
+#  will then begin supervising the service.
+#
+#  CONF_DIR should be something like /etc/servicebuilder.d/ .  It must be
+# filled with config files that end in ".yaml".
+# Config file:
+#
+#  mysql:
+#     run: mysqld -fg 
+#     sleep: 30
+#  sshd:
+#     run: sshd -fg
+#     log: svlogd -tt
+#     logsleep: 5
+#
+# All "run" scripts and "log" scripts WILL BE PREPENDED WITH AN "exec"!
+# Your run script MUST RUN IN THE FOREGROUND or you'll create a fork bomb.
+# For more information about runit, see http://smarden.org/runit/ .
+#
+
+require 'getoptlong'
+require 'yaml'
+require 'fileutils'
+
+# A Service has a name, a runscript, and a logscript.
+# Create a Service object, populate :name, :run, :log, 
+# :stagedir, and :activatedir.  Then, s.create! to build it in the stagedir.
+# s.activate! to symlink it into the activedir.
+class Service
+  attr_accessor :name, :run, :log, :stagedir, :activatedir, :sleep, :logsleep
+
+  # Methods to wrap your runscript and logscript around something safe
+  def runscript
+    retstring = <<EOF
+#!/usr/bin/ruby
+$stderr.reopen(STDOUT)
+require 'yaml'
+sleep #{self.sleep}
+exec *YAML.load(DATA.read)
+sleep 2
+__END__
+#{self.run.to_yaml}
+EOF
+    return retstring
+  end
+
+  def logscript
+    retstring = <<EOF
+#!/usr/bin/ruby
+require 'yaml'
+sleep #{self.logsleep}
+exec *YAML.load(DATA.read)
+sleep 2
+__END__
+#{self.log.to_yaml}
+EOF
+    return retstring
+  end
+
+  # Build the directory hierarchy in the staging directory.
+  def create!
+    modified = false
+    # Create directories if they need to be created
+    if not File.directory?(@stagedir)
+      puts "Creating directory #{@stagedir}"
+      Kernel.system("mkdir", "-p", @stagedir)
+      modified = true
+    end
+    if not File.directory?(File.join(@stagedir, "log"))
+      puts "Creating directory #{@stagedir}/log"
+      Kernel.system("mkdir", "-p", File.join(@stagedir, "log"))
+      modified = true
+    end
+    if not File.directory?(File.join(@stagedir, "log", "main"))
+      puts "Creating directory #{@stagedir}/log/main"
+      Kernel.system("mkdir", "-p", File.join(@stagedir, "log", "main"))
+      FileUtils.chown('nobody', 'nobody', 
+                      File.join(@stagedir, "log", "main"))
+      modified = true
+    end
+
+    # Test to see if we need to edit the run and log/run scripts
+    writerun = true
+    if File.file?(File.join(@stagedir, "run"))
+      File.open(File.join(@stagedir, "run")) do |f|
+        currun = f.read
+        if(currun == self.runscript)
+          writerun = false
+        end
+      end
+    end
+
+    writelog = true
+    if File.file?(File.join(@stagedir, "log", "run"))
+      File.open(File.join(@stagedir, "log", "run")) do |f|
+        curlog = f.read
+        if(curlog == self.logscript)
+          writelog = false
+        end
+      end
+    end
+
+    # Write run and log/run
+    if writerun
+      File.open(File.join(@stagedir, "run"), 'w') do |f|
+        puts "Writing #{@stagedir}/run"
+        f.write(self.runscript)
+      end
+      File.chmod(0755, File.join(@stagedir, "run"))
+      modified = true
+    end
+
+    if writelog
+      File.open(File.join(@stagedir, "log", "run"), 'w') do |f|
+        puts "Writing #{@stagedir}/log/run"
+        f.write(self.logscript)
+      end
+      File.chmod(0755, File.join(@stagedir, "log", "run"))
+      modified = true
+    end
+
+    # return if we had to modify the directories
+    return modified
+  end
+
+  # Symlink the staging directory into the active directory.
+  def activate!
+    if File.exists?(@activatedir)
+      if not File.symlink?(@activatedir)
+        puts "#{@activatedir} is not a symlink, unsure how to continue"
+        exit(1)
+      end
+      if not File.readlink(@activatedir) == @stagedir
+        puts "#{@activatedir} is not a symlink to #{@stagedir}, " +
+          "unsure how to continue"
+        exit(1)
+      end
+    else
+      puts "Symlinking #{@stagedir} to #{@activatedir}"
+      File.symlink(@stagedir, @activatedir)
+    end
+  end
+end
+
+def usage
+  puts "Usage: $0 --conf CONFIG_DIRECTORY -s STAGING_DIRECTORY "
+  puts "          -d INSTALL_DIRECTORY"
+  exit(1)
+end
+
+opts = GetoptLong.new(['--confdir', '-c', GetoptLong::REQUIRED_ARGUMENT],
+                      ['--stagedir', '-s', GetoptLong::REQUIRED_ARGUMENT],
+                      ['--activatedir', '-d', GetoptLong::REQUIRED_ARGUMENT],
+                      ['--help', '-h', GetoptLong::NO_ARGUMENT])
+
+confdir = '/etc/servicebuilder.d'
+stagedir = '/var/service-stage'
+activatedir = '/var/service'
+
+opts.each do |opt, arg|
+  case opt
+  when '--help'
+    usage()
+  when '--stagedir'
+    stagedir = File.expand_path(arg)
+  when '--activatedir'
+    activatedir = File.expand_path(arg)
+  when '--confdir'
+    confdir = arg
+  end
+end
+
+# require these options
+[confdir, stagedir, activatedir].each do |v|
+  usage() unless v
+end
+
+haveservices = {}
+wantservices = {}
+
+# read the config files, build the list of services that we want to exist
+confdata = {}
+raise "#{confdir} does not exist!"  unless File.directory?(confdir)
+Dir.open(confdir) do |dir|
+  dir.each do |file|
+    next if file =~ /^\./
+    next unless file =~ /\.yaml$/
+    configfile = File.join(confdir, file)
+    next unless File.file?(configfile)
+    config = File.read(configfile)
+    data = YAML.load(config)
+    raise "#{configfile} is empty!" if data.empty?
+    data.each do |k, v|
+      if confdata.has_key?(k)
+        raise "Service #{k} defined twice"
+      end
+      confdata[k] = v
+    end
+  end
+end
+
+confdata.each do |k, d|
+  # build a Service object for each key in the configuration
+  servicename = k
+  raise "service #{k} has no run script" unless d.has_key?('run')
+
+  run = d['run']
+  if run.class != Array
+    raise "Error, bad args passed to run statement"
+  end
+  sleep = 2
+  if d.has_key?('sleep') and d['sleep'].to_i >= 0
+    sleep = d['sleep'].to_i
+  end
+  logsleep = 2
+  if d.has_key?('logsleep') and d['logsleep'].to_i >= 0
+    logsleep = d['logsleep'].to_i
+  end
+  if d.member?('log')
+    log = d['log']
+    if log.class != Array
+      raise "Error, bad args passed to log statement"
+    end
+  else
+    log = %w{chpst -unobody svlogd -tt ./main}
+  end
+  
+  s = Service.new
+  s.name = servicename
+  s.run = run
+  s.log = log
+  s.sleep = sleep
+  s.logsleep = logsleep
+  s.stagedir = File.join(stagedir, servicename)
+  s.activatedir = File.join(activatedir, servicename)
+
+  # mark that yes, we do want this service to persist
+  wantservices[servicename] = s
+end
+
+# make sure /var/service exists
+unless File.directory?(activatedir)
+  if File.exists?(activatedir)
+    raise "#{activatedir} exists but is not a directory, bailing"
+  end
+  FileUtils.mkdir(activatedir)
+end
+
+# activate them by symlinking the staged service into the activate directory
+wantservices.values.each do |s|
+  puts "Found #{s.name}"
+  modified = s.create!
+  # Restart the service if we've modified it
+  if modified
+    puts "Running sv t #{stagedir}/#{s.name}"
+    system("sv t #{stagedir}/#{s.name}")
+    puts "Warning: Unable to restart service #{s.name}" if $?
+  end
+  s.activate!
+end
+
+# remove all services that we do not want
+found_staging = []
+found_activate = []
+
+# find every service found in the staging directory
+Dir.open(stagedir) do |dir|
+  dir.each do |file|
+    next if file =~ /^\./
+    next unless File.directory?(File.join(stagedir, file))
+    found_staging.push(File.join(stagedir, file))
+  end
+end
+
+# find every service found in the activate directory
+Dir.open(activatedir) do |dir|
+  dir.each do |file|
+    next if file =~ /^\./
+    next unless File.directory?(File.join(activatedir, file))
+    found_activate.push(File.join(activatedir, file))
+  end
+end
+
+# for each activated service, rm it if we don't want it anymore
+found_activate.each do |dir|
+  still_wanted = false
+  wantservices.each do |k, v|
+    if v.activatedir == dir
+      still_wanted = true
+    end
+  end
+
+  if still_wanted == false
+    puts "Unlinking #{dir} from activated location"
+    File.unlink(dir)
+  end
+end
+
+# for each staged service, rm if we don't want it anymore
+# we send sv exit only now so runit doesn't automatically restart it
+# when it notices runsv not running in the activated directory
+found_staging.each do |dir|
+  still_wanted = false
+  wantservices.each do |k, v|
+    if v.stagedir == dir
+      still_wanted = true
+    end
+  end
+
+  if still_wanted == false
+    puts "Stopping service #{dir}"
+    system("sv stop #{dir}")
+    puts "Warning: Unable to stop service #{dir}" if $?
+        
+    puts "Removing service #{dir}"
+    FileUtils.rm_r(dir)
+  end
+end 
