@@ -19,8 +19,7 @@ hostmap.each do |group, hosts|
       host_to_group[h] = [["DEFAULT", 
                            File.join(datadir, "groups", "DEFAULT")]]
     end
-    host_to_group[h].push([group, "groups", File.join(datadir, group)])
-    host_to_group[h].uniq!
+    host_to_group[h].push([group, File.join(datadir, "groups", group)])
   end
 end
 

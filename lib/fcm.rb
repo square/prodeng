@@ -1,12 +1,19 @@
 #!/usr/bin/ruby
 
 class FcmNode
+  attr_accessor :name, :groups, :files
   def initialize(name)
     @name = name
-    @groups = [FcmGroup.new("DEFAULT", "../testdata/groups/DEFAULT")]
+    @groups = []
     @files = {}
   end
   
+  def add_group(group, path)
+    if File.directory?(path)
+      @groups.push(FcmGroup.new(group, path))
+    end
+  end
+
   def generate!
     @groups.each do |g|
       @files = g.apply(@files)
@@ -86,18 +93,19 @@ class FcmAction
   end
 end
 
-node = FcmNode.new("defaulthost")
-filemap = node.generate!
-filemap.each do |fname, data|
-  puts "FILE: #{fname}"
-  data.each do |d|
-    puts d
-  end
-end
-
 if __FILE__ == $0
   # invoke me from lib/
   require 'pp'
+
+  node = FcmNode.new("defaulthost")
+  filemap = node.generate!
+  filemap.each do |fname, data|
+    data.each do |d|
+      puts "FILE: #{fname}"
+      puts d
+    end
+  end
+
   g = FcmGroup.new("DEFAULT", "../testdata/groups/DEFAULT")
   t = FcmTransform.new("../testdata/groups/DEFAULT/f.yaml")
   input = ["Hello", "Goodbye"]
