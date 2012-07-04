@@ -1,3 +1,5 @@
+#!/usr/bin/ruby
+
 class FcmNode
   def initialize(name)
     @name = name
@@ -93,7 +95,11 @@ filemap.each do |fname, data|
   end
 end
 
-#g = FcmGroup.new("DEFAULT", "groups/DEFAULT")
-#t = FcmTransform.new("f.yaml")
-#input = ["Hello", "Goodbye"]
-#puts t.apply(input)
+if __FILE__ == $0
+  # invoke me from lib/
+  require 'pp'
+  g = FcmGroup.new("DEFAULT", "../testdata/groups/DEFAULT")
+  t = FcmTransform.new("../testdata/groups/DEFAULT/f.yaml")
+  input = ["Hello", "Goodbye"]
+  puts t.apply(input)
+end
