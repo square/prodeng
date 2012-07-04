@@ -1,0 +1,43 @@
+#!/usr/bin/ruby
+
+require '../lib/fcm.rb'
+require 'yaml'
+require 'fileutils'
+
+datadir = "../testdata"
+hostmap = {}
+File.open(File.join(datadir, "hosts.yaml")) do |f|
+  hostmap = YAML.load(f.read)
+end
+
+host_to_group = {}
+
+hostmap.each do |group, hosts|
+  hosts.each do |h|
+    unless host_to_group.has_key?(h)
+      host_to_group[h] = []
+    end
+    host_to_group[h].push([group, File.join(datadir, group)])
+    host_to_group[h].uniq!
+  end
+end
+
+host_to_group.each do |h, groups|
+  n = FcmNode.new(h)
+  allgroups = ""
+  groups.each do |g|
+    n.add_group(g[0], g[1])
+    allgroups += " #{g[0]}"
+  end
+  n.generate!
+
+  # this is where we'd write files out to disk to get rsync'd
+  puts "---  Host: #{h} in groups #{allgroups}"
+  n.files.each do |fname, contents|
+    puts "-  File: #{fname}"
+    contents.each do |line|
+      puts "#{line}"
+    end
+  end
+end
+
