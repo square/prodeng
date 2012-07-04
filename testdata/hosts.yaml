@@ -1,0 +1,9 @@
+BIGTCP:
+  - host1
+  - host2
+  - host3
+
+CANARIES:
+  - host666
+  - host667
+  - host668
