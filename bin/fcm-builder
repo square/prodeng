@@ -14,10 +14,12 @@ host_to_group = {}
 
 hostmap.each do |group, hosts|
   hosts.each do |h|
+    # all hosts are in DEFAULT first
     unless host_to_group.has_key?(h)
-      host_to_group[h] = []
+      host_to_group[h] = [["DEFAULT", 
+                           File.join(datadir, "groups", "DEFAULT")]]
     end
-    host_to_group[h].push([group, File.join(datadir, group)])
+    host_to_group[h].push([group, "groups", File.join(datadir, group)])
     host_to_group[h].uniq!
   end
 end
