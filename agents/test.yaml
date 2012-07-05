@@ -1,13 +1,6 @@
 #!/usr/bin/ruby
 
-require 'tempfile'
+require '../lib/fcm-agent-tools.rb'
 
-filename = ARGV[0]
-data = File.open(filename).read()
-
-file = Tempfile.new('test')
-file.write(data)
-File.rename(file.path, "/tmp/hello")
-file.fsync
-file.close
-
+f = FcmAgent.new
+f.install_file("/tmp/test.yaml")
