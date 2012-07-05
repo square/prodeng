@@ -44,13 +44,16 @@ there.
 
 ## File formats
 
+Group transformations are applied in the order in which they appear in
+hosts.yaml. 
+
 DATADIR/hosts.yaml:
 
-    GROUPNAME:
+    - GROUPNAME:
         - host1
         - host2
         - host3
-    GROUP2:
+    - GROUP2:
         - host3
         - host4
         - hostZ

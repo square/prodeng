@@ -1,0 +1,43 @@
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+package main;
+
+my $agentdir = "../agents";
+my $filedir = "../files";
+
+my $dir;
+
+while(1) {
+    print STDERR "$0 waking up\n";
+    my %agents = ();
+    opendir $dir, $agentdir
+      or die "Can't open $agentdir: $!";
+    while(my $file = readdir $dir) {
+        next if($file =~ /^\./);
+        next unless -f "$agentdir/$file";
+        next unless -x "$agentdir/$file";
+        next unless -f "$filedir/$file";
+        print STDERR "Executing $file\n";
+        
+        if(my $pid = fork) {
+            $agents{$pid} = $file;
+        } else {
+            exec("$agentdir/$file", "$filedir/$file");
+        }
+    }
+    closedir $dir;
+    
+    while(keys %agents > 0) {
+        my $pid = wait;
+        print STDERR "$agents{$pid} exited $?\n";
+        delete $agents{$pid};
+    }
+    
+    print STDERR "Sleepin'\n";
+    sleep 5;
+} 
+
+
