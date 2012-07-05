@@ -1,17 +1,18 @@
 #!/usr/bin/ruby
+require 'yaml'
 
 class FcmNode
-  attr_accessor :name, :groups, :files
+  attr_reader :name, :groups, :files
+
   def initialize(name)
     @name = name
     @groups = []
     @files = {}
   end
-  
+
   def add_group(group, path)
-    if File.directory?(path)
-      @groups.push(FcmGroup.new(group, path))
-    end
+    return nil unless File.directory?(path)
+    @groups.push(FcmGroup.new(group, path))
   end
 
   def generate!
@@ -26,10 +27,10 @@ class FcmGroup
   def initialize(name, directory)
     @name = name
     @transforms = {}
+
     Dir.open(directory) do |d|
       d.each do |f|
-        next if f =~ /^\./
-        next unless File.file?(File.join(directory, f))
+        next if f.start_with?(".") || !File.file?(File.join(directory, f))
         @transforms[f] = FcmTransform.new(File.join(directory, f))
       end
     end
@@ -38,85 +39,81 @@ class FcmGroup
   # inputset is a map of { filename => [array of lines in file], etc }
   def apply(inputset)
     @transforms.each do |filename, t|
-      unless inputset.has_key?(filename)
-        inputset[filename] = []
-      end
-      inputset[filename] = t.apply(inputset[filename])
+      inputset[filename] = t.apply(inputset[filename] || [])
     end
-  return inputset
+    return inputset
   end
 
 end
 
 class FcmTransform
-  require 'yaml'
   def initialize(file)
-    @actions = []
-    data = {}
-    File.open(file) do |f|
-      data = YAML.load(f.read)
-    end
+    data = YAML.load_file(file)
+
     unless data.is_a?(Array)
-      raise "#{file} must be a yaml file with an array in it" 
+      raise "#{file} must be a yaml file with an array in it"
     end
-    
-    data.each do |line|
-      line.each do |type, rest|
-        @actions.push(FcmAction.new(type, rest))
-      end
+
+    @actions = data.inject([]) do |actions,line|
+      actions + line.to_a
     end
   end
 
   def apply(input)
-    @actions.each do |a|
-      input = a.apply(input)
+    @actions.inject(input) do |input, (type, action_data)|
+      FcmActions.apply(input, type, action_data)
     end
-    return input
   end
 end
 
-class FcmAction
-  def initialize(type, data)
-    @type = type
-    @data = data
-    @datadir = "../testdata" # HACK
+module FcmActions
+  @datadir = File.join(File.dirname(__FILE__), "../testdata") # HACK
+
+  def self.handle_truncate(input, action_data)
+    unless action_data == nil
+      raise "Parse error: TRUNCATE takes no arguments"
+    end
+    []
+  end
+
+  def self.handle_append(input, action_data)
+    unless action_data.is_a?(String)
+      raise "Parse error: APPEND takes a string"
+    end
+    input + [action_data]
+  end
+
+  def self.handle_include(input, action_data)
+    unless action_data.is_a?(String)
+      raise "Parse error: INCLUDE takes a filename"
+    end
+
+    File.open(File.join(@datadir, "raw", action_data)) do |f|
+      input + f.readlines
+    end
+  end
+
+  def self.handle_replacere(input, action_data)
+    unless action_data.has_key?('regex') and action_data.has_key?('sub')
+      raise "Parse error: REPLACERE needs two named arguments"
+    end
+
+    regex = Regexp.new(action_data['regex'])
+
+    input.map { |line| line.gsub(regex, action_data['sub']) }
+  end
+
+  @handlers = %w[TRUNCATE APPEND INCLUDE REPLACERE].inject({}) do |h,type|
+    h[type] = method("handle_#{type.downcase}")
+    h
   end
 
   # input is an array
-  def apply(input)
-    output = Array.new(input)
-    case @type
-    when "TRUNCATE"
-      unless @data == nil
-        raise "Parse error: TRUNCATE takes no arguments"
-      end
-      output = []
-    when "APPEND"
-      unless @data.is_a?(String)
-        raise "Parse error: APPEND takes a string"
-      end
-      output.push(@data)
-    when "INCLUDE" # string arg
-      unless @data.is_a?(String)
-        raise "Parse error: INCLUDE takes a filename"
-      end
-      File.open(File.join(@datadir, "raw", @data)) do |f|
-        f.each do |line|
-          output.push(line)
-        end
-      end
-    when "REPLACERE" # two named args: regex and sub
-      unless @data.has_key?('regex') and @data.has_key?('sub')
-        raise "Parse error: REPLACERE needs two named arguments"
-      end
-      regex = Regexp.new(@data['regex'])
-      sub = @data['sub']
-      output.map! { |line| line.gsub(regex, sub) }
-    else
-      raise "Invalid type"
-    end
-    return output
+  def self.apply(input, type, action_data)
+    raise "Invalid type" unless @handlers.has_key?(type)
+    @handlers[type].call(input, action_data)
   end
+
 end
 
 if __FILE__ == $0
@@ -132,8 +129,10 @@ if __FILE__ == $0
     end
   end
 
-  g = FcmGroup.new("DEFAULT", "../testdata/groups/DEFAULT")
-  t = FcmTransform.new("../testdata/groups/DEFAULT/f.yaml")
+  test_dir = File.join(File.dirname(__FILE__), "../testdata")
+
+  g = FcmGroup.new("DEFAULT", File.join(test_dir, "groups/DEFAULT"))
+  t = FcmTransform.new(File.join(test_dir, "groups/DEFAULT/f.yaml"))
   input = ["Hello", "Goodbye"]
   puts t.apply(input)
 end

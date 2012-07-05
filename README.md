@@ -2,16 +2,16 @@ fcm - F configuration management
 ===
 
 fcm is a configuration management system that aims to manage configuration, and
-nothing more. 
+nothing more.
 
 ## Design goals
 
 * Current state live on-hosts is never trusted.
 * All data about what configuration a host should have is derived from group
-  membership. 
+  membership.
 * fcm shall provide a trailer hitch on the front and on the back; no deep
   integration with other software is required and fcm will not interfere with
-  other software. 
+  other software.
 * fcm shall not deal with dependency management in any way.  All operations are
   expected to happen at any time.
 
@@ -74,7 +74,7 @@ DATADIR/hosts.yaml:
         - host3
         - host4
         - hostZ
-        
+
 DATADIR/GROUPNAME/named.conf:
 
     - INCLUDE: "/var/fcm/files/named.conf.base"
