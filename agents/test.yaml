@@ -3,4 +3,6 @@
 require '../lib/fcm-agent-tools.rb'
 
 f = FcmAgent.new
-f.install_file("/tmp/test.yaml")
+if f.install_file("/tmp/test.yaml")
+  puts "Something happened!"
+end
