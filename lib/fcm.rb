@@ -79,17 +79,43 @@ class FcmAction
   def initialize(type, data)
     @type = type
     @data = data
+    @datadir = "../testdata" # HACK
   end
 
   # input is an array
   def apply(input)
     output = Array.new(input)
     case @type
+    when "TRUNCATE"
+      unless @data == nil
+        raise "Parse error: TRUNCATE takes no arguments"
+      end
+      output = []
     when "APPEND"
+      unless @data.is_a?(String)
+        raise "Parse error: APPEND takes a string"
+      end
       output.push(@data)
+    when "INCLUDE" # string arg
+      unless @data.is_a?(String)
+        raise "Parse error: INCLUDE takes a filename"
+      end
+      File.open(File.join(@datadir, "raw", @data)) do |f|
+        f.each do |line|
+          output.push(line)
+        end
+      end
+    when "REPLACERE" # two named args: regex and sub
+      unless @data.has_key?('regex') and @data.has_key?('sub')
+        raise "Parse error: REPLACERE needs two named arguments"
+      end
+      regex = Regexp.new(@data['regex'])
+      sub = @data['sub']
+      output.map! { |line| line.gsub(regex, sub) }
     else
       raise "Invalid type"
     end
+    return output
   end
 end
 

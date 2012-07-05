@@ -1,9 +1,5 @@
-BIGTCP:
-  - host1
-  - host2
-  - host3
+- BIGTCP:
+    - host1
 
-CANARIES:
-  - host666
-  - host667
-  - host668
+- CANARIES:
+    - host666
