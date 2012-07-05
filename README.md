@@ -29,6 +29,23 @@ asynchronous agents are then free to read these files and do what they will with
 them.  For example, an httpd.conf agent could atomically copy fcm's httpd.conf
 into /etc/httpd and then reload apache if it was changed.
 
+An agent for a file shall be a standalone executable program that will be passed
+the name of its input file as its first argument.  These agents are expected to
+do the right thing with regard to file atomicity, fsync, etc.
+
+An example agent that installs a file into /tmp/hello:
+
+    #!/usr/bin/ruby
+    require 'tempfile'
+    filename = ARGV[0]
+    data = File.open(filename).read()
+    file = Tempfile.new('/tmp/test')
+    file.write(data)
+    File.rename(file.path, "/tmp/hello")
+    file.fsync
+    file.close
+
+
 ## Trailer hitches?
 
 Any good vehicle is designed to tow or be towed.  fcm does not assume that
