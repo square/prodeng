@@ -88,9 +88,7 @@ module FcmActions
       raise "Parse error: INCLUDE takes a filename"
     end
 
-    File.open(File.join(@datadir, "raw", action_data)) do |f|
-      input + f.readlines
-    end
+    input + File.readlines(File.join(@datadir, "raw", action_data))
   end
 
   def self.handle_replacere(input, action_data)
@@ -103,7 +101,30 @@ module FcmActions
     input.map { |line| line.gsub(regex, action_data['sub']) }
   end
 
-  @handlers = %w[TRUNCATE APPEND INCLUDE REPLACERE].inject({}) do |h,type|
+  def self.handle_deletere(input, action_data)
+    unless action_data.is_a?(String)
+      raise "Parse error: DELETERE takes a string"
+    end
+    output = []
+    regex = Regexp.new(action_data)
+    input.each do |line|
+      output += line unless regex.match(line)
+    end
+    
+    output
+  end
+
+  def self.handle_includeline(input, action_data)
+    unless action_data.has_key?('regex') and action_data.has_key?('file')
+      raise "Parse error: INCLUDELINE needs two named arguments"
+    end
+    
+    File.open(File.join(@datadir, "raw", action_data['file'])) do |f|
+      input + f.readlines.grep(Regexp.new(action_data['regex']))
+    end
+  end
+
+  @handlers = %w[TRUNCATE APPEND INCLUDE DELETERE REPLACERE INCLUDELINE].inject({}) do |h,type|
     h[type] = method("handle_#{type.downcase}")
     h
   end
