@@ -1,10 +1,74 @@
 #!/usr/bin/ruby
 
 require '../lib/fcm.rb'
+require 'getoptlong'
 require 'yaml'
 require 'fileutils'
 
+def usage
+  puts "Usage: #{$0} -d DATA_DIRECTORY [-o OUTPUT-DIRECTORY] [-H HOST -f FILE]"
+  puts " -o not allowed in conjunction with -H"
+  puts " -H and -f must be used together"
+  exit(1)
+end
+
+def print_file(node, showfile)
+  node.files.each do |fname, contents|
+    next unless fname == showfile
+    contents.each { |line| puts line }
+  end
+end
+
+def write_files(node, directory)
+  unless File.directory?(directory)
+    FileUtils.mkdir(directory)
+  end
+
+  unless File.directory?(File.join(directory, node.name))
+    FileUtils.mkdir(File.join(directory, node.name))
+  end
+  
+  node.files.each do |fname, contents|
+    File.open(File.join(directory, node.name, fname), 'w') do |f|
+      contents.each { |line| f.puts(line) }
+    end
+  end
+end
+  
+opts = GetoptLong.new(['--datadir', '-d', GetoptLong::REQUIRED_ARGUMENT],
+                      ['--outputdir', '-o', GetoptLong::REQUIRED_ARGUMENT],
+                      ['--host', '-H', GetoptLong::REQUIRED_ARGUMENT],
+                      ['--file', '-f', GetoptLong::REQUIRED_ARGUMENT],
+                      ['--help', '-h', GetoptLong::NO_ARGUMENT])
+
 config = FcmConfig.new
+showhost = nil
+showfile = nil
+outputdir = nil
+
+opts.each do |opt, arg|
+  case opt
+  when '--help'
+    usage()
+  when '--datadir'
+    config.datadir = arg
+  when '--outputdir'
+    outputdir = arg
+  when '--host'
+    showhost = arg
+  when '--file'
+    showfile = arg
+  end
+end
+
+usage() if outputdir and showhost
+usage() if showhost and not showfile
+
+# required args
+[config.datadir].each do |v|
+  usage() unless v
+end
+
 config.datadir = "../testdata"
 
 hostmap = {}
@@ -22,12 +86,14 @@ hostmap.each do |item|
         host_to_group[h] = [["DEFAULT", 
                              File.join(config.datadir, "groups", "DEFAULT")]]
       end
-      host_to_group[h].push([group, File.join(config.datadir, "groups", group)])
+      host_to_group[h].push([group, 
+                             File.join(config.datadir, "groups", group)])
     end
   end
 end
 
 host_to_group.each do |h, groups|
+  next if showhost and showhost != h
   n = FcmNode.new(h, config)
   allgroups = ""
   groups.each do |g|
@@ -37,12 +103,17 @@ host_to_group.each do |h, groups|
   n.generate!
 
   # this is where we'd write files out to disk to get rsync'd
-  puts "---  Host: #{h} in groups #{allgroups}"
-  n.files.each do |fname, contents|
-    puts "-  File: #{fname}"
-    contents.each do |line|
-      puts "#{line}"
-    end
-  end
+  
+  write_files(n, outputdir) if outputdir
+  print_file(n, showfile) if showhost and showfile
+  
+  #puts "---  Host: #{h} in groups #{allgroups}"
+  #n.files.each do |fname, contents|
+  #  next if showfile and showfile != fname
+  #  puts "-  File: #{fname}"
+  #  contents.each do |line|
+  #    puts "#{line}"
+  #  end
+  #end
 end
 

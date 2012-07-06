@@ -15,6 +15,19 @@ nothing more.
 * fcm shall not deal with dependency management in any way.  All operations are
   expected to happen at any time.
 
+## How to run it
+
+This command will read configs from ../testdata and dump all configs in 
+/tmp/test:
+
+    $ ./fcm-builder -d ../testdata/ -o /tmp/test
+
+This command will read configs from ../testdata and show you what host1's passwd
+file will look like:
+
+    $ ./fcm-builder -d ../testdata/ -H host1 -f passwd
+    root:x:0:0:root:/root:/bin/bash
+
 ## How it works
 
 A YAML file specifies a group-to-host map.  A series of file on disks maps
