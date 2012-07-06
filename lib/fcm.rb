@@ -1,18 +1,23 @@
 #!/usr/bin/ruby
 require 'yaml'
 
+class FcmConfig
+  attr_accessor :datadir
+end
+
 class FcmNode
   attr_reader :name, :groups, :files
 
-  def initialize(name)
+  def initialize(name, config)
     @name = name
     @groups = []
     @files = {}
+    @config = config
   end
 
   def add_group(group, path)
     return nil unless File.directory?(path)
-    @groups.push(FcmGroup.new(group, path))
+    @groups.push(FcmGroup.new(group, path, @config))
   end
 
   def generate!
@@ -24,14 +29,15 @@ class FcmNode
 end
 
 class FcmGroup
-  def initialize(name, directory)
+  def initialize(name, directory, config)
     @name = name
     @transforms = {}
+    @config = config
 
     Dir.open(directory) do |d|
       d.each do |f|
         next if f.start_with?(".") || !File.file?(File.join(directory, f))
-        @transforms[f] = FcmTransform.new(File.join(directory, f))
+        @transforms[f] = FcmTransform.new(File.join(directory, f), @config)
       end
     end
   end
@@ -47,7 +53,8 @@ class FcmGroup
 end
 
 class FcmTransform
-  def initialize(file)
+  def initialize(file, config)
+    @config = config
     data = YAML.load_file(file)
 
     unless data.is_a?(Array)
@@ -61,37 +68,35 @@ class FcmTransform
 
   def apply(input)
     @actions.inject(input) do |input, (type, action_data)|
-      FcmActions.apply(input, type, action_data)
+      FcmActions.apply(input, type, action_data, @config)
     end
   end
 end
 
 module FcmActions
-  @datadir = File.join(File.dirname(__FILE__), "../testdata") # HACK
-
-  def self.handle_truncate(input, action_data)
+  def self.handle_truncate(input, action_data, config)
     unless action_data == nil
       raise "Parse error: TRUNCATE takes no arguments"
     end
     []
   end
 
-  def self.handle_append(input, action_data)
+  def self.handle_append(input, action_data, config)
     unless action_data.is_a?(String)
       raise "Parse error: APPEND takes a string"
     end
     input + [action_data]
   end
 
-  def self.handle_include(input, action_data)
+  def self.handle_include(input, action_data, config)
     unless action_data.is_a?(String)
       raise "Parse error: INCLUDE takes a filename"
     end
 
-    input + File.readlines(File.join(@datadir, "raw", action_data))
+    input + File.readlines(File.join(config.datadir, "raw", action_data))
   end
-
-  def self.handle_replacere(input, action_data)
+ 
+  def self.handle_replacere(input, action_data, config)
     unless action_data.has_key?('regex') and action_data.has_key?('sub')
       raise "Parse error: REPLACERE needs two named arguments"
     end
@@ -101,7 +106,7 @@ module FcmActions
     input.map { |line| line.gsub(regex, action_data['sub']) }
   end
 
-  def self.handle_deletere(input, action_data)
+  def self.handle_deletere(input, action_data, config)
     unless action_data.is_a?(String)
       raise "Parse error: DELETERE takes a string"
     end
@@ -114,12 +119,12 @@ module FcmActions
     output
   end
 
-  def self.handle_includeline(input, action_data)
+  def self.handle_includeline(input, action_data, config)
     unless action_data.has_key?('regex') and action_data.has_key?('file')
       raise "Parse error: INCLUDELINE needs two named arguments"
     end
     
-    File.open(File.join(@datadir, "raw", action_data['file'])) do |f|
+    File.open(File.join(config.datadir, "raw", action_data['file'])) do |f|
       input + f.readlines.grep(Regexp.new(action_data['regex']))
     end
   end
@@ -130,9 +135,9 @@ module FcmActions
   end
 
   # input is an array
-  def self.apply(input, type, action_data)
+  def self.apply(input, type, action_data, config)
     raise "Invalid type" unless @handlers.has_key?(type)
-    @handlers[type].call(input, action_data)
+    @handlers[type].call(input, action_data, config)
   end
 
 end

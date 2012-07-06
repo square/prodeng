@@ -4,9 +4,11 @@ require '../lib/fcm.rb'
 require 'yaml'
 require 'fileutils'
 
-datadir = "../testdata"
+config = FcmConfig.new
+config.datadir = "../testdata"
+
 hostmap = {}
-File.open(File.join(datadir, "hosts.yaml")) do |f|
+File.open(File.join(config.datadir, "hosts.yaml")) do |f|
   hostmap = YAML.load(f.read)
 end
 
@@ -18,15 +20,15 @@ hostmap.each do |item|
       # all hosts are in DEFAULT first
       unless host_to_group.has_key?(h)
         host_to_group[h] = [["DEFAULT", 
-                             File.join(datadir, "groups", "DEFAULT")]]
+                             File.join(config.datadir, "groups", "DEFAULT")]]
       end
-      host_to_group[h].push([group, File.join(datadir, "groups", group)])
+      host_to_group[h].push([group, File.join(config.datadir, "groups", group)])
     end
   end
 end
 
 host_to_group.each do |h, groups|
-  n = FcmNode.new(h)
+  n = FcmNode.new(h, config)
   allgroups = ""
   groups.each do |g|
     n.add_group(g[0], g[1])
