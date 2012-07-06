@@ -103,17 +103,7 @@ host_to_group.each do |h, groups|
   n.generate!
 
   # this is where we'd write files out to disk to get rsync'd
-  
   write_files(n, outputdir) if outputdir
   print_file(n, showfile) if showhost and showfile
-  
-  #puts "---  Host: #{h} in groups #{allgroups}"
-  #n.files.each do |fname, contents|
-  #  next if showfile and showfile != fname
-  #  puts "-  File: #{fname}"
-  #  contents.each do |line|
-  #    puts "#{line}"
-  #  end
-  #end
 end
 
