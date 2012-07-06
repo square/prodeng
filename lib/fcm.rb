@@ -88,9 +88,7 @@ module FcmActions
       raise "Parse error: INCLUDE takes a filename"
     end
 
-    File.open(File.join(@datadir, "raw", action_data)) do |f|
-      input + f.readlines
-    end
+    input + File.readlines(File.join(@datadir, "raw", action_data))
   end
 
   def self.handle_replacere(input, action_data)
