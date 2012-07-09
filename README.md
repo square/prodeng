@@ -99,3 +99,37 @@ DATADIR/GROUPNAME/named.conf:
 This will cause all hosts in GROUPNAME to start with a base named.conf
 configuration, and then append some extra lines to it.  In this case, host1,2,3
 will each get this named.conf.
+
+## Supported transformation commands
+
+    
+    - INCLUDE: string
+
+Includes the whole file under DATADIR/raw/string.
+
+    - APPEND: string
+
+Appends the line "string" to the file.
+
+    - REPLACERE:
+       regex: foo
+       sub: bar
+
+Replaces all instances of "foo" with "bar" on all lines of the file.
+
+    - TRUNCATE
+
+Truncates the file, start from scratch.
+
+    - DELETERE: regex
+
+Deletes all lines matching regex.
+
+    - INCLUDELINE:
+        file: filename
+        regex: some_regex
+
+Includes all lines matching some_regex from DATADIR/raw/filename.  Example:
+when you want to include just one line out of a passwd file.
+
+
