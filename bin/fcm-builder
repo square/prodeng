@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-require '../lib/fcm.rb'
+require 'fcm'
 require 'getoptlong'
 require 'yaml'
 require 'fileutils'
@@ -68,8 +68,6 @@ usage() if showhost and not showfile
 [config.datadir].each do |v|
   usage() unless v
 end
-
-config.datadir = "../testdata"
 
 hostmap = {}
 File.open(File.join(config.datadir, "hosts.yaml")) do |f|
