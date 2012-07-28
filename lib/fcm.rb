@@ -86,6 +86,19 @@ class FcmLine
 end  
 
 module FcmActions
+  def self.handle_dedup(input, action_data, group, config)
+    unless action_data == nil
+      raise "Parse error: DEDUP takes no arguments"
+    end
+    seen = {}
+    output = []
+    input.each do |line|
+      output << line unless seen.has_key?(line.content)
+      seen[line.content] = true
+    end
+    return output
+  end
+
   def self.handle_truncate(input, action_data, group, config)
     unless action_data == nil
       raise "Parse error: TRUNCATE takes no arguments"
@@ -159,7 +172,7 @@ module FcmActions
     return input + lines
   end
 
-  @handlers = %w[TRUNCATE APPEND INCLUDE DELETERE REPLACERE INCLUDELINE].inject({}) do |h,type|
+  @handlers = %w[TRUNCATE APPEND INCLUDE DELETERE REPLACERE INCLUDELINE DEDUP].inject({}) do |h,type|
     h[type] = method("handle_#{type.downcase}")
     h
   end
