@@ -1,4 +1,5 @@
 class FcmAgent
+  attr_accessor :filedata, :filename
   def initialize()
     unless ARGV.length == 1
       raise "This program takes exactly one argument"
