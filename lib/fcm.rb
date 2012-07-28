@@ -36,8 +36,10 @@ class FcmGroup
 
     Dir.open(directory) do |d|
       d.each do |f|
-        next if f.start_with?(".") || !File.file?(File.join(directory, f))
-        @transforms[f] = FcmTransform.new(File.join(directory, f), @config)
+        next if f.start_with?(".")
+        next unless File.file?(File.join(directory, f))
+        @transforms[f] = FcmTransform.new(f, File.join(directory, f), 
+                                          name, @config)
       end
     end
   end
@@ -53,8 +55,10 @@ class FcmGroup
 end
 
 class FcmTransform
-  def initialize(file, config)
+  def initialize(name, file, group, config)
+    @name = name
     @config = config
+    @group = group
     data = YAML.load_file(file)
 
     unless data.is_a?(Array)
@@ -68,65 +72,91 @@ class FcmTransform
 
   def apply(input)
     @actions.inject(input) do |input, (type, action_data)|
-      FcmActions.apply(input, type, action_data, @config)
+      FcmActions.apply(input, type, action_data, @group, @config)
     end
   end
 end
 
+class FcmLine
+  attr_accessor :group, :content
+  def initialize(group, content)
+    @group = group
+    @content = content
+  end
+end  
+
 module FcmActions
-  def self.handle_truncate(input, action_data, config)
+  def self.handle_truncate(input, action_data, group, config)
     unless action_data == nil
       raise "Parse error: TRUNCATE takes no arguments"
     end
     []
   end
 
-  def self.handle_append(input, action_data, config)
+  def self.handle_append(input, action_data, group, config)
     unless action_data.is_a?(String)
       raise "Parse error: APPEND takes a string"
     end
-    input + [action_data]
+    input + [FcmLine.new(group, action_data)]
   end
 
-  def self.handle_include(input, action_data, config)
+  def self.handle_include(input, action_data, group, config)
     unless action_data.is_a?(String)
       raise "Parse error: INCLUDE takes a filename"
     end
 
-    input + File.readlines(File.join(config.datadir, "raw", action_data))
+    lines = []
+    data = File.readlines(File.join(config.datadir, "raw", action_data))
+    data.each do |d|
+      lines << FcmLine.new(group, d)
+    end
+  
+    input + lines
   end
  
-  def self.handle_replacere(input, action_data, config)
+  def self.handle_replacere(input, action_data, group, config)
     unless action_data.has_key?('regex') and action_data.has_key?('sub')
       raise "Parse error: REPLACERE needs two named arguments"
     end
 
     regex = Regexp.new(action_data['regex'])
 
-    input.map { |line| line.gsub(regex, action_data['sub']) }
+    input.each do |line|
+      if regex.match(line.content)
+        line.group = group
+        line.content.gsub!(regex, action_data['sub'])
+      end
+    end
+    return input
   end
 
-  def self.handle_deletere(input, action_data, config)
+  def self.handle_deletere(input, action_data, group, config)
     unless action_data.is_a?(String)
       raise "Parse error: DELETERE takes a string"
     end
     output = []
     regex = Regexp.new(action_data)
     input.each do |line|
-      output += line unless regex.match(line)
+      output += line unless regex.match(line.content)
     end
     
-    output
+    return output
   end
 
-  def self.handle_includeline(input, action_data, config)
+  def self.handle_includeline(input, action_data, group, config)
     unless action_data.has_key?('regex') and action_data.has_key?('file')
       raise "Parse error: INCLUDELINE needs two named arguments"
     end
     
+    lines = []
     File.open(File.join(config.datadir, "raw", action_data['file'])) do |f|
-      input + f.readlines.grep(Regexp.new(action_data['regex']))
+      data = f.readlines.grep(Regexp.new(action_data['regex']))
+      data.each do |d|
+        lines << FcmLine.new(group, d)
+      end
     end
+
+    return input + lines
   end
 
   @handlers = %w[TRUNCATE APPEND INCLUDE DELETERE REPLACERE INCLUDELINE].inject({}) do |h,type|
@@ -135,9 +165,9 @@ module FcmActions
   end
 
   # input is an array
-  def self.apply(input, type, action_data, config)
+  def self.apply(input, type, action_data, group, config)
     raise "Invalid type" unless @handlers.has_key?(type)
-    @handlers[type].call(input, action_data, config)
+    @handlers[type].call(input, action_data, group, config)
   end
 
 end

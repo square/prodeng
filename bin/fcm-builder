@@ -1,12 +1,12 @@
 #!/usr/bin/ruby
 
-require 'fcm'
+require '../lib/fcm.rb'
 require 'getoptlong'
 require 'yaml'
 require 'fileutils'
 
 def usage
-  puts "Usage: #{$0} -d DATA_DIRECTORY [-o OUTPUT-DIRECTORY] [-H HOST -f FILE]"
+  puts "Usage: #{$0} -d DATA_DIRECTORY [-o OUTPUT-DIRECTORY] [-H HOST -f FILE] [--blame]"
   puts " -o not allowed in conjunction with -H"
   puts " -H and -f must be used together"
   exit(1)
@@ -15,7 +15,16 @@ end
 def print_file(node, showfile)
   node.files.each do |fname, contents|
     next unless fname == showfile
-    contents.each { |line| puts line }
+    contents.each { |line| puts line.content }
+  end
+end
+
+def print_blame(node, showfile)
+  node.files.each do |fname, contents|
+    next unless fname == showfile
+    contents.each do |line|
+      puts line.group + ": " + line.content
+    end
   end
 end
 
@@ -30,7 +39,7 @@ def write_files(node, directory)
   
   node.files.each do |fname, contents|
     File.open(File.join(directory, node.name, fname), 'w') do |f|
-      contents.each { |line| f.puts(line) }
+      contents.each { |line| f.puts(line.content) }
     end
   end
 end
@@ -39,12 +48,14 @@ opts = GetoptLong.new(['--datadir', '-d', GetoptLong::REQUIRED_ARGUMENT],
                       ['--outputdir', '-o', GetoptLong::REQUIRED_ARGUMENT],
                       ['--host', '-H', GetoptLong::REQUIRED_ARGUMENT],
                       ['--file', '-f', GetoptLong::REQUIRED_ARGUMENT],
+                      ['--blame', '-b', GetoptLong::NO_ARGUMENT],
                       ['--help', '-h', GetoptLong::NO_ARGUMENT])
 
 config = FcmConfig.new
 showhost = nil
 showfile = nil
 outputdir = nil
+blame = false
 
 opts.each do |opt, arg|
   case opt
@@ -58,6 +69,8 @@ opts.each do |opt, arg|
     showhost = arg
   when '--file'
     showfile = arg
+  when '--blame'
+    blame = true
   end
 end
 
@@ -102,6 +115,12 @@ host_to_group.each do |h, groups|
 
   # this is where we'd write files out to disk to get rsync'd
   write_files(n, outputdir) if outputdir
-  print_file(n, showfile) if showhost and showfile
+  if showhost and showfile
+    if blame
+      print_blame(n, showfile)
+    else
+      print_file(n, showfile)
+    end
+  end
 end
 
