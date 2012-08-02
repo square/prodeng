@@ -15,6 +15,10 @@ optparse = OptionParser.new do |opts|
   opts.on('-r', '--range RANGE', 'currently takes a CSV list') do |arg|
     options[:range] = arg 
   end
+  opts.on('-f', '--file FILE', 'List of hostnames in a FILE \
+          (use /dev/stdin for reading from stdin') do |arg|
+    options[:file] = arg 
+  end
   opts.on('-m', '--maxflight 50', 'How many subprocesses? 50 by default') do |arg|
     options[:maxflight] = arg 
   end
@@ -38,18 +42,26 @@ optparse = OptionParser.new do |opts|
 end
 optparse.parse!
 
-raise "Error, need -r argument" if options[:range].nil? or options[:range].empty?
+targets = []
+if (!options[:range].nil?)
+    require 'rangeclient'
+    range = Range::Client.new
+    targets = range.expand options[:range]
+elsif (!options[:file].nil?)
+    targets_fd = File.open(options[:file])
+    targets_fd.read.each { |x| targets << x.chomp }
+else 
+    raise "Error, need -r or -f option" 
+end
+
+
 raise "Error, need command to run" if ARGV.size.zero?
 raise "Error, too many arguments" if ARGV.size != 1
 
 
-range = Range::Client.new
 
 m = MultipleCmd.new
-
-targets = range.expand options[:range]
-
-m.commands = targets.map { |t| ["/usr/bin/ssh", "-2", "-oPasswordAuthentication=no", "-A", t].push ARGV.first }
+m.commands = targets.map { |t| ["/usr/bin/ssh", "-t", "-2", "-oBatchMode=yes", "-A", t].push ARGV.first }
 command_to_target = Hash.new
 targets.size.times do |i|
   command_to_target[m.commands[i].object_id] = targets[i]
