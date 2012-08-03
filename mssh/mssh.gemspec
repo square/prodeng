@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 Gem::Specification.new do |s|
   s.name        = "mssh"
-  s.version     = "0.0.1"
+  s.version     = "0.0.2"
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Evan Miller"]
   s.email       = ["github@squareup.com"]
@@ -13,7 +13,6 @@ Gem::Specification.new do |s|
 
   s.add_dependency "json"
   s.add_dependency "rangeclient"
-  s.add_dependency "rdoc"
   s.default_executable = %q{mssh}
   s.executables = %W{ mssh mcmd }
 
