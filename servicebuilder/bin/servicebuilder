@@ -47,7 +47,7 @@ class Service
 #!/usr/bin/ruby
 $stderr.reopen(STDOUT)
 require 'yaml'
-system("/bin/sleep",#{self.sleep})
+sleep #{self.sleep}
 exec *YAML.load(DATA.read)
 sleep 2
 __END__
