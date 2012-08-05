@@ -61,7 +61,7 @@ raise "Error, too many arguments" if ARGV.size != 1
 
 
 m = MultipleCmd.new
-m.commands = targets.map { |t| ["/usr/bin/ssh", "-t", "-2", "-oBatchMode=yes", "-A", t].push ARGV.first }
+m.commands = targets.map { |t| ["/usr/bin/ssh","-2", "-oBatchMode=yes", "-A", t].push ARGV.first }
 command_to_target = Hash.new
 targets.size.times do |i|
   command_to_target[m.commands[i].object_id] = targets[i]
@@ -77,15 +77,18 @@ m.debug = options[:debug]
 
 result = m.run
 
-if options[:collapse]
+if (options[:collapse] and options[:range])
   # print a collapsed summary
-  stdout_matches = Hash.new
+  out_matches = Hash.new
   result.each do |r|
-    stdout_matches[r[:stdout_buf]] = [] if stdout_matches[r[:stdout_buf]].nil?
-    stdout_matches[r[:stdout_buf]] << command_to_target[r[:command].object_id]
+    out = "" 
+    out += r[:stdout_buf].chomp if(!r[:stdout_buf].nil?)
+    out += r[:stderr_buf].chomp if(!r[:stderr_buf].nil?)
+    out_matches[out] = [] if out_matches[out].nil?
+    out_matches[out] << command_to_target[r[:command].object_id]
   end
   # output => [targets ...]
-  stdout_matches.each_pair do |k,v|
+  out_matches.each_pair do |k,v|
     hosts = range.compress v
     puts "#{hosts}: '#{k.chomp}'"
   end
@@ -93,6 +96,14 @@ else
   # not collapse, print one per host
   result.each do |r|
     target = command_to_target[r[:command].object_id]
-    puts "#{target}: #{r[:retval] == 0 ? 'SUCCESS:':'FAILURE:'} '#{r[:stdout_buf].chomp}'\n"
+    out = "" 
+    out += r[:stdout_buf].chomp if(!r[:stdout_buf].nil?)
+    out += r[:stderr_buf].chomp if(!r[:stderr_buf].nil?)
+    if (r[:retval] == 0 )
+        puts "#{target}:SUCCESS: #{out}\n"
+    else
+        exit_code = r[:retval].exitstatus.to_s if(!r[:retval].nil?)
+        puts "#{target}:FAILURE[#{exit_code}]: #{out}\n"
+    end
   end
 end
