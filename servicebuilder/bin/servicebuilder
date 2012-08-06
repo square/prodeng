@@ -22,6 +22,7 @@
 #     run: sshd -fg
 #     log: svlogd -tt
 #     logsleep: 5
+#     loguser: nobody
 #
 # All "run" scripts and "log" scripts WILL BE PREPENDED WITH AN "exec"!
 # Your run script MUST RUN IN THE FOREGROUND or you'll create a fork bomb.
@@ -37,7 +38,8 @@ require 'fileutils'
 # :stagedir, and :activatedir.  Then, s.create! to build it in the stagedir.
 # s.activate! to symlink it into the activedir.
 class Service
-  attr_accessor :name, :run, :log, :stagedir, :activatedir, :sleep, :logsleep
+  attr_accessor :name, :run, :log, :stagedir, :activatedir, :sleep, :logsleep,\
+                :loguser
 
   # Methods to wrap your runscript and logscript around something safe
   def runscript
@@ -84,7 +86,7 @@ EOF
     if not File.directory?(File.join(@stagedir, "log", "main"))
       puts "Creating directory #{@stagedir}/log/main"
       Kernel.system("mkdir", "-p", File.join(@stagedir, "log", "main"))
-      FileUtils.chown('nobody', 'nobody', 
+      FileUtils.chown(self.loguser, self.loguser, 
                       File.join(@stagedir, "log", "main"))
       modified = true
     end
@@ -226,13 +228,17 @@ confdata.each do |k, d|
   if d.has_key?('logsleep') and d['logsleep'].to_i >= 0
     logsleep = d['logsleep'].to_i
   end
+  loguser = 'nobody'
+  if(d.has_key?('loguser'))
+    loguser= d['loguser']
+  end
   if d.member?('log')
     log = d['log']
     if log.class != Array
       raise "Error, bad args passed to log statement"
     end
   else
-    log = %w{chpst -unobody svlogd -tt ./main}
+    log = ['chpst',"-u#{loguser}",'svlogd','-tt','./main']
   end
   
   s = Service.new
@@ -241,6 +247,7 @@ confdata.each do |k, d|
   s.log = log
   s.sleep = sleep
   s.logsleep = logsleep
+  s.loguser  = loguser
   s.stagedir = File.join(stagedir, servicename)
   s.activatedir = File.join(activatedir, servicename)
 
