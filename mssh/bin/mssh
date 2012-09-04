@@ -3,7 +3,6 @@
 require 'rubygems'
 require 'pp'
 require 'mcmd'
-require 'rangeclient'
 
 require 'optparse'
 options = {
