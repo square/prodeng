@@ -12,7 +12,6 @@ Gem::Specification.new do |s|
   s.required_rubygems_version = ">= 1.3.6"
 
   s.add_dependency "json"
-  s.add_dependency "rangeclient"
   s.default_executable = %q{mssh}
   s.executables = %W{ mssh mcmd }
 
