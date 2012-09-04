@@ -48,7 +48,9 @@ class Service
 $stderr.reopen(STDOUT)
 require 'yaml'
 sleep #{self.sleep}
-exec *YAML.load(DATA.read)
+data = YAML.load(DATA.read)
+run = data.map {|s| s.to_s}
+exec *run
 sleep 2
 __END__
 #{self.run.to_yaml}
@@ -61,7 +63,9 @@ EOF
 #!/usr/bin/ruby
 require 'yaml'
 sleep #{self.logsleep}
-exec *YAML.load(DATA.read)
+data = YAML.load(DATA.read)
+run = data.map {|s| s.to_s}
+exec *run
 sleep 2
 __END__
 #{self.log.to_yaml}
