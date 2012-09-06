@@ -10,6 +10,7 @@
 
 #define _BSD_SOURCE
 #include <errno.h>
+#include <grp.h>
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdlib.h>
