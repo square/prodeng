@@ -1,6 +1,6 @@
 /*
  * Derived from the public domain setuidgid from djb's daemontools.
- * See http://cr.yp.to/
+ * See http://cr.yp.to/daemontools/setuidgid.html
  *
  * Behavior is very, very similar. Major differences:
  *  * More meaningful error reporting
