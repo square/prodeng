@@ -69,7 +69,7 @@ raise "too many arguments" if ARGV.size != 1
 
 
 m = MultipleCmd.new
-m.commands = targets.map { |t| ["/usr/bin/ssh","-2", "-oBatchMode=yes", "-A", t].push ARGV.first }
+m.commands = targets.map { |t| ["/usr/bin/ssh","-2", "-oStrictHostKeyChecking=no", "-oBatchMode=yes", "-A", t].push ARGV.first }
 command_to_target = Hash.new
 targets.size.times do |i|
   command_to_target[m.commands[i].object_id] = targets[i]
