@@ -56,7 +56,7 @@ if (!options[:range].nil?)
 end
 if (!options[:file].nil?)
   targets_fd = File.open(options[:file])
-  targets_fd.read.each { |x| targets << x.chomp }
+  targets_fd.read.each_line { |x| targets << x.chomp }
 end
 if (!options[:hostlist].nil?)
   targets.push *options[:hostlist]
