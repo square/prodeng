@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 Gem::Specification.new do |s|
   s.name        = "mssh"
-  s.version     = "0.0.4"
+  s.version     = "0.0.6"
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Evan Miller"]
   s.email       = ["github@squareup.com"]
@@ -12,12 +12,11 @@ Gem::Specification.new do |s|
   s.required_rubygems_version = ">= 1.3.6"
 
   s.add_dependency "json"
-  s.add_dependency "rangeclient"
   s.default_executable = %q{mssh}
   s.executables = %W{ mssh mcmd }
 
 
-  s.files        = Dir.glob("lib/**/*") + Dir.glob("bin/*") + %w(README.md)
+  s.files        = %w{lib/mcmd.rb bin/mcmd bin/mssh } + %w(README.md)
   s.extra_rdoc_files = ["LICENSE.md"]
   s.rdoc_options = ["--charset=UTF-8"]
 end

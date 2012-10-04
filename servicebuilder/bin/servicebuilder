@@ -39,7 +39,7 @@ require 'fileutils'
 # s.activate! to symlink it into the activedir.
 class Service
   attr_accessor :name, :run, :log, :stagedir, :activatedir, :sleep, :logsleep,\
-                :loguser
+                :loguser, :down
 
   # Methods to wrap your runscript and logscript around something safe
   def runscript
@@ -48,7 +48,9 @@ class Service
 $stderr.reopen(STDOUT)
 require 'yaml'
 sleep #{self.sleep}
-exec *YAML.load(DATA.read)
+data = YAML.load(DATA.read)
+run = data.map {|s| s.to_s}
+exec *run
 sleep 2
 __END__
 #{self.run.to_yaml}
@@ -61,7 +63,9 @@ EOF
 #!/usr/bin/ruby
 require 'yaml'
 sleep #{self.logsleep}
-exec *YAML.load(DATA.read)
+data = YAML.load(DATA.read)
+run = data.map {|s| s.to_s}
+exec *run
 sleep 2
 __END__
 #{self.log.to_yaml}
@@ -89,6 +93,17 @@ EOF
       FileUtils.chown(self.loguser, self.loguser, 
                       File.join(@stagedir, "log", "main"))
       modified = true
+    end
+    if @down
+      if not File.file?(File.join(@stagedir, "down"))
+        puts "Creating down file #{@stagedir}/down"
+        Kernel.system("touch", File.join(@stagedir, "down"))
+      end
+    else
+      if File.file?(File.join(@stagedir, "down"))
+        puts "Removing down file #{@stagedir}/down"
+        File.unlink(File.join(@stagedir, "down"))
+      end
     end
 
     # Test to see if we need to edit the run and log/run scripts
@@ -240,6 +255,11 @@ confdata.each do |k, d|
   else
     log = ['chpst',"-u#{loguser}",'svlogd','-tt','./main']
   end
+  if d.has_key?('down')
+    down = true
+  else
+    down = false
+  end
   
   s = Service.new
   s.name = servicename
@@ -248,6 +268,7 @@ confdata.each do |k, d|
   s.sleep = sleep
   s.logsleep = logsleep
   s.loguser  = loguser
+  s.down = down
   s.stagedir = File.join(stagedir, servicename)
   s.activatedir = File.join(activatedir, servicename)
 
@@ -260,7 +281,17 @@ unless File.directory?(activatedir)
   if File.exists?(activatedir)
     raise "#{activatedir} exists but is not a directory, bailing"
   end
+  puts "Creating directory #{activatedir}"
   FileUtils.mkdir(activatedir)
+end
+
+# make sure /var/service-stage exists
+unless File.directory?(stagedir)
+  if File.exists?(stagedir)
+    raise "#{stagedir} exists but is not a directory, bailing"
+  end
+  puts "Creating directory #{stagedir}"
+  FileUtils.mkdir(stagedir)
 end
 
 # activate them by symlinking the staged service into the activate directory

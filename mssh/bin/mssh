@@ -3,20 +3,22 @@
 require 'rubygems'
 require 'pp'
 require 'mcmd'
-require 'rangeclient'
 
 require 'optparse'
+require 'ostruct'
 options = {
   :maxflight => 50,
   :timeout => 60,
   :global_timeout => 600,
 }
 optparse = OptionParser.new do |opts|
-  opts.on('-r', '--range RANGE', 'currently takes a CSV list') do |arg|
+  opts.on('-r', '--range RANGE', 'Requires a configured Range::Client. Use --hostlist if you do not use range') do |arg|
     options[:range] = arg 
   end
-  opts.on('-f', '--file FILE', 'List of hostnames in a FILE \
-          use (/dev/stdin) for reading from stdin') do |arg|
+  opts.on('--hostlist x,y,z', Array, 'List of hostnames to execute on') do |arg|
+    options[:hostlist] = arg 
+  end
+  opts.on('-f', '--file FILE', 'List of hostnames in a FILE use (/dev/stdin) for reading from stdin') do |arg|
     options[:file] = arg 
   end
   opts.on('-m', '--maxflight 50', 'How many subprocesses? 50 by default') do |arg|
@@ -43,20 +45,26 @@ end
 optparse.parse!
 
 targets = []
-if (!options[:range].nil?)
-    require 'rangeclient'
-    range = Range::Client.new
-    targets = range.expand options[:range]
-elsif (!options[:file].nil?)
-    targets_fd = File.open(options[:file])
-    targets_fd.read.each { |x| targets << x.chomp }
-else 
-    raise "Error, need -r or -f option" 
+if (options[:range].nil? and options[:file].nil? and options[:hostlist].nil?)
+  raise "Error, need -r or -f or --hostlist option"
 end
 
+if (!options[:range].nil?)
+  require 'rangeclient'
+  range = Range::Client.new
+  targets.push *range.expand(options[:range])
+end
+if (!options[:file].nil?)
+  targets_fd = File.open(options[:file])
+  targets_fd.read.each_line { |x| targets << x.chomp }
+end
+if (!options[:hostlist].nil?)
+  targets.push *options[:hostlist]
+end
 
-raise "Error, need command to run" if ARGV.size.zero?
-raise "Error, too many arguments" if ARGV.size != 1
+raise "no targets specified. Check your -r, -f or --hostlist inputs" if targets.size.zero?
+raise "need command to run" if ARGV.size.zero?
+raise "too many arguments" if ARGV.size != 1
 
 
 
