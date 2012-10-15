@@ -44,8 +44,9 @@ class FcmAgent
     
     require 'tempfile'
     filedir = File.dirname(location)
-    newfile = Tempfile.new(filedir)
+    newfile = Tempfile.new(".fcmtemp", filedir)
     newfile.write(filedata)
+    newfile.fsync
     # verify write. Only replace if on-disk file is what our buffer has
     if diff(newfile.path, filedata)
       raise "Error: attempted to write file, but output data doesn't match"
