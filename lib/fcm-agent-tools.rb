@@ -28,7 +28,19 @@ class FcmAgent
 
   # true: something was changed.  false: it was not
   # FIXME add permissions, install_cmd
-  def install_file(location, data = nil)
+  def install_file(location, owner = nil, group = nil, mode = nil, data = nil)
+    if owner == nil
+      owner = 'root'
+    end
+    
+    if group == nil
+      group = 'root'
+    end
+    
+    if mode == nil
+      mode = 0644
+    end
+
     if data
       filedata = data
     else
@@ -52,6 +64,9 @@ class FcmAgent
       raise "Error: attempted to write file, but output data doesn't match"
       File.unlink(newfile.path)
     end
+    FileUtils.chown(owner, group, newfile.path)
+    FileUtils.chmod(mode, newfile.path)
+    
     File.rename(newfile.path, location)
     newfile.fsync
     newfile.close
