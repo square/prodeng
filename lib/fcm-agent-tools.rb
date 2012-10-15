@@ -28,16 +28,26 @@ class FcmAgent
 
   # true: something was changed.  false: it was not
   # FIXME add permissions, install_cmd
-  def install_file(location)
-    return false unless diff(location, @filedata)
+  def install_file(location, data = nil)
+    if data
+      filedata = data
+    else
+      filedata = @filedata
+    end
+    return false unless diff(location, filedata)
 
-    STDERR.puts("#{$0}: Installing #{@filename} to #{location}")
+    if data
+      STDERR.puts("#{$0}: Installing file data to #{location}")
+    else
+      STDERR.puts("#{$0}: Installing #{@filename} to #{location}")
+    end
+    
     require 'tempfile'
-    filedir = File.dirname(@filename)
+    filedir = File.dirname(location)
     newfile = Tempfile.new(filedir)
-    newfile.write(@filedata)
+    newfile.write(filedata)
     # verify write. Only replace if on-disk file is what our buffer has
-    if diff(newfile.path, @filedata)
+    if diff(newfile.path, filedata)
       raise "Error: attempted to write file, but output data doesn't match"
       File.unlink(newfile.path)
     end
@@ -47,7 +57,7 @@ class FcmAgent
     # If we're on linux, fsync the parent directory.
     arch, os = RUBY_PLATFORM.split('-')
     if os == "linux"
-      d = File.new(filedir, "r")
+      d = File.new(localtion, "r")
       d.fsync
       d.close
     end
