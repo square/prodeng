@@ -1,6 +1,8 @@
 #!/usr/bin/ruby
 
 require 'pp'
+require 'rubygems'
+require 'io/poll'
 
 class MultipleCmd
 
@@ -131,7 +133,7 @@ class MultipleCmd
     write_fds = @subproc_by_pid.values.select {|x| not x.stdin_fd.nil? and not x.terminated}.map {|x| x.stdin_fd}
     read_fds = @subproc_by_pid.values.select {|x| not x.terminated}.map {|x| [x.stdout_fd, x.stderr_fd].select {|x| not x.nil? } }.flatten
 
-    read_fds, write_fds, err_fds = IO.select(read_fds, write_fds, nil, self.poll_period)
+    read_fds, write_fds, err_fds = IO.select_using_poll(read_fds, write_fds, nil, self.poll_period)
 
     self.process_read_fds(read_fds) unless read_fds.nil?
     self.process_write_fds(write_fds) unless write_fds.nil?
@@ -239,7 +241,7 @@ class MultipleCmd
     # We may have waited on a child before reading all its output. Collect those missing bits. No blocking.
     if not just_reaped.empty?
       read_fds = just_reaped.select {|x| not x.terminated}.map {|x| [x.stdout_fd, x.stderr_fd].select {|x| not x.nil? } }.flatten
-      read_fds, write_fds, err_fds = IO.select(read_fds, nil, nil, 0)
+      read_fds, write_fds, err_fds = IO.select_using_poll(read_fds, nil, nil, 0)
       self.process_read_fds(read_fds) unless read_fds.nil?
     end
     just_reaped.each do |p|
