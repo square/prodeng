@@ -3,7 +3,6 @@
 require 'rubygems'
 require 'rest_client'
 require 'cgi'
-require 'pp'
 
 class Range::Client
 
@@ -196,5 +195,6 @@ if __FILE__ == $0
   rangearg = ARGV.shift
   r = Range::Client.new({:host => rangehost})
   hosts =  r.expand(rangearg)
+  pp hosts
   pp r.compress(hosts)
 end
