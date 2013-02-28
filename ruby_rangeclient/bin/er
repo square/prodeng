@@ -1,0 +1,60 @@
+#!/usr/bin/ruby
+
+require 'rubygems'
+require 'rangeclient'
+
+require 'optparse'
+require 'ostruct'
+options = {
+  :timeout => 60,
+}
+optparse = OptionParser.new do |opts|
+  opts.on('-e', '--expand', 'Print one element per line') do |arg|
+    options[:expand] = arg 
+  end
+  opts.on('-c', '--count', 'Print the count of range elements, not the range itself') do |arg|
+    options[:count] = arg 
+  end
+  opts.on('-v', '--vip range:80', 'Which host or host:port to query') do |arg|
+    options[:vip] = arg 
+  end
+  opts.on('-p', '--port 80', 'Port to use when connecting') do |arg|
+    options[:port] = arg 
+  end
+  opts.on('-t', '--timeout', "Wait this long for a response ") do |arg|
+    options[:timeout] = arg 
+  end
+  opts.on('-h', '--help', "Usage ") do |arg|
+    options[:verbose] = arg 
+  end
+end
+optparse.parse!
+
+range = Range::Client.new
+
+in_range = ARGV.join ','
+
+raise "No range given" if in_range.empty?
+
+if in_range  == '-'
+  in_range = STDIN.readlines.map { |l| l.chomp }.join ','
+end
+
+nodes = range.expand(in_range)
+
+if options[:count]
+  # if counting, return count
+  puts nodes.size
+elsif not nodes.size.zero?
+  # if we got a result, display it accordingly
+  if options[:expand]
+    nodes.each do |node|
+      puts node
+    end
+  else
+    puts range.compress(nodes)
+  end
+else
+  # no nodes returned.
+  raise "No nodes specified"
+end
