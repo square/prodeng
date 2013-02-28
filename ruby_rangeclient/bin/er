@@ -6,9 +6,7 @@ require 'rangeclient'
 require 'optparse'
 require 'ostruct'
 options = {
-  :maxflight => 50,
   :timeout => 60,
-  :global_timeout => 600,
 }
 optparse = OptionParser.new do |opts|
   opts.on('-e', '--expand', 'Print one element per line') do |arg|
