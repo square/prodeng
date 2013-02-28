@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 Gem::Specification.new do |s|
   s.name        = "rangeclient"
-  s.version     = "0.0.5"
+  s.version     = "0.0.6"
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Evan Miller"]
   s.email       = ["evan@squareup.com"]
@@ -10,6 +10,9 @@ Gem::Specification.new do |s|
   s.homepage    = "https://github.com/square/prodeng/tree/master/ruby_rangeclient"
 
   s.required_rubygems_version = ">= 1.3.6"
+
+  s.default_executable = %q{er}
+  s.executables = %W{ er }
 
   s.add_dependency "rest-client"
   s.files        = Dir.glob("lib/**/*") + Dir.glob("bin/*") + %w(README.md)
