@@ -24,9 +24,6 @@ optparse = OptionParser.new do |opts|
   opts.on('-t', '--timeout', "Wait this long for a response ") do |arg|
     options[:timeout] = arg 
   end
-  opts.on('-h', '--help', "Usage ") do |arg|
-    options[:verbose] = arg 
-  end
 end
 optparse.parse!
 
