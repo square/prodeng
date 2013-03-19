@@ -39,6 +39,9 @@ optparse = OptionParser.new do |opts|
   opts.on('-d', '--debug', "Debug output") do |arg|
     options[:debug] = arg 
   end
+  opts.on('-s', '--ssh SSH_COMMAND', "ssh command override") do |arg|
+    options[:ssh_command] = arg
+  end
   # option to merge stdin/stdout into one buf?
   # option to ignore as-we-go yield output
 end
@@ -69,7 +72,7 @@ raise "too many arguments" if ARGV.size != 1
 
 
 m = MultipleCmd.new
-m.commands = targets.map { |t| ["/usr/bin/ssh","-2", "-oBatchMode=yes", "-A", t].push ARGV.first }
+m.commands = targets.map { |t| ((options[:ssh_command] || "/usr/bin/ssh").split(" ") + ["-2", "-oBatchMode=yes", "-A", t]).push ARGV.first }
 command_to_target = Hash.new
 targets.size.times do |i|
   command_to_target[m.commands[i].object_id] = targets[i]
