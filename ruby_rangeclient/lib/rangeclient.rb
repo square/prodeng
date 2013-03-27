@@ -1,10 +1,11 @@
 #!/usr/bin/ruby
 
 require 'rubygems'
-require 'rest_client'
+require 'net/http'
 require 'cgi'
 
 class Range::Client
+  attr_accessor :host, :port, :timeout
 
   # used to split hostnames into component parts for compression
   @@NodeRegx = /
@@ -14,20 +15,25 @@ class Range::Client
                /x;
 
   def initialize(options = {})
-    default_host = 'range'
-    default_host = ENV['RANGE_HOST'] if ENV.has_key?('RANGE_HOST')
-    default_port = '80'
-    default_port = ENV['RANGE_PORT'] if ENV.has_key?('RANGE_PORT')
-    @options = {
-      :host => default_host,
-      :port => default_port,
-    }.merge(options)
+    @host = ENV['RANGE_HOST'] if ENV.has_key?('RANGE_HOST')
+    @host = @options[:host]
+    @host ||= 'range'
+
+    @port = ENV['RANGE_PORT'] if ENV.has_key?('RANGE_PORT')
+    @port = @options[:port]
+    @port ||= '80'
+
+    @timeout = @options[:timeout]
+    @timeout ||= 60
   end
   
   def expand(arg)
     escaped_arg = CGI.escape arg
-    res = RestClient.get "http://#{@options[:host]}:#{@options[:port]}/range/list?#{escaped_arg}"
-    return res.split "\n"
+    http = Net::HTTP.new(@host, @port)
+    http.read_timout = @timeout
+    req = Net::HTTP::Get.new('/range/list?' + escaped_arg)
+    resp = http.request(req)
+    return resp.body.split "\n"
   end
 
 
