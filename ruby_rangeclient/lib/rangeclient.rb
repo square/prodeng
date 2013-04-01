@@ -167,7 +167,7 @@ class Range::Client
     group = sprintf("%s%0*d..%s",
                     prefix,
                     digits.to_s.length, 
-                    digits,
+                    digits.to_i,   # sometimes has leading zeroes
                     _ignore_common_prefix(digits, (digits.to_i + count).to_s)
                     )
     suffix = "" if suffix.nil?
