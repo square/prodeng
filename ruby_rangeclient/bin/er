@@ -4,7 +4,7 @@ require 'rubygems'
 require 'rangeclient'
 
 require 'optparse'
-require 'ostruct'
+
 options = {
   :timeout => 60,
 }
