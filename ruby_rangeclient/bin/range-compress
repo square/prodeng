@@ -26,7 +26,7 @@ if in_range.empty?
 end
 
 if in_range  == '-'
-  in_range = STDIN.readlines.map { |l| l.chomp }
+  in_range = STDIN.readlines.map { |l| l.chomp }.join(',')
 end
 
 nodes = range.compress(in_range.split(','))
