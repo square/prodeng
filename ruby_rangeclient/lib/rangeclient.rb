@@ -17,14 +17,14 @@ class Range::Client
   def initialize(options = {})
     @host = 'range'
     @host = ENV['RANGE_HOST'] if ENV.has_key?('RANGE_HOST')
-    @host = @options[:host] if options.member?(:host)
+    @host = options[:host] if options.member?(:host)
 
     @port = '80'
     @port = ENV['RANGE_PORT'] if ENV.has_key?('RANGE_PORT')
-    @port = @options[:port] if options.member?(:port)
+    @port = options[:port] if options.member?(:port)
 
     @timeout = 60
-    @timeout = @options[:timeout] if options.member?(:timeout)
+    @timeout = options[:timeout] if options.member?(:timeout)
   end
   
   def expand(arg)

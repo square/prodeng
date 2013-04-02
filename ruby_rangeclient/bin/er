@@ -26,8 +26,8 @@ optparse = OptionParser.new do |opts|
   opts.on('-p', '--port 80', 'Port to use when connecting') do |arg|
     options[:port] = arg 
   end
-  opts.on('-t', '--timeout', "Wait this long for a response") do |arg|
-    options[:timeout] = arg 
+  opts.on('-t', '--timeout TIMEOUT', "Wait this long for a response") do |arg|
+    options[:timeout] = arg.to_i
   end
   opts.on_tail('-h', '--help', "This help message") do
     puts opts
