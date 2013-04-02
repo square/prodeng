@@ -39,10 +39,21 @@ optparse = OptionParser.new do |opts|
   opts.on('-d', '--debug', "Debug output") do |arg|
     options[:debug] = arg 
   end
+  opts.on('--sshopt',  "ssh options, default [-2, -oBatchMode=yes, -A]. Can be used multiple times.") do |arg|
+    options[:sshopt] ||= []
+    options[:sshopt] << arg
+  end
+  opts.on('--sshcmd', "Path to the ssh binary") do |arg|
+    options[:sshcmd] = arg
+  end
   # option to merge stdin/stdout into one buf?
   # option to ignore as-we-go yield output
 end
 optparse.parse!
+
+# default options
+options[:sshopt] ||= ["-2", "-oBatchMode=yes", "-A"]
+options[:sshcmd] = "/usr/bin/ssh"
 
 targets = []
 if (options[:range].nil? and options[:file].nil? and options[:hostlist].nil?)
@@ -69,7 +80,7 @@ raise "too many arguments" if ARGV.size != 1
 
 
 m = MultipleCmd.new
-m.commands = targets.map { |t| ["/usr/bin/ssh","-2", "-oBatchMode=yes", "-A", t].push ARGV.first }
+m.commands = targets.map { |t| [options[:sshcmd], *options[:sshopt] ].push t, ARGV.first }
 command_to_target = Hash.new
 targets.size.times do |i|
   command_to_target[m.commands[i].object_id] = targets[i]
