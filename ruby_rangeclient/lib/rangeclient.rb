@@ -30,7 +30,7 @@ class Range::Client
   def expand(arg)
     escaped_arg = CGI.escape arg
     http = Net::HTTP.new(@host, @port)
-    http.read_timout = @timeout
+    http.read_timeout = @timeout
     req = Net::HTTP::Get.new('/range/list?' + escaped_arg)
     resp = http.request(req)
     return resp.body.split "\n"
