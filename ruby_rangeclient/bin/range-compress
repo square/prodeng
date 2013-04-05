@@ -1,0 +1,39 @@
+#!/usr/bin/ruby
+
+require 'rubygems'
+require 'rangeclient'
+require 'pp'
+
+require 'optparse'
+
+optparse = OptionParser.new do |opts|
+  opts.banner = "Usage: #{__FILE__} <range to compress>"
+  opts.on_tail('-h', '--help', "This help message") do
+    puts opts
+    exit
+  end
+end
+optparse.parse!
+
+range = Range::Client.new()
+
+in_range = ARGV.join(',')
+
+if in_range.empty?
+  puts optparse
+  puts "[ERROR] No range specified"
+  exit 1
+end
+
+if in_range  == '-'
+  in_range = STDIN.readlines.map { |l| l.chomp }.join(',')
+end
+
+nodes = range.compress(in_range.split(','))
+
+if not nodes.size.zero?
+  puts nodes
+else
+  puts "[WARNING] No nodes returned"
+  exit 1
+end
