@@ -34,12 +34,14 @@ module FCM
         if File.expand_path(File.readlink(node_link)) == File.expand_path(directory)
           next
         else
-          File.unlink(node_link)
+          File.symlink(File.join(directory, bucket), node_link + '.new')
+          File.rename(node_link + '.new', node_link)
         end
       elsif File.exists?(node_link)
         raise "Non-symlink node file #{node_link}.  Will not delete"
+      else
+        File.symlink(File.join(directory, bucket), node_link)
       end
-      File.symlink(File.join(directory, bucket), node_link)
     end
   end
 
