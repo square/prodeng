@@ -5,7 +5,7 @@ require 'yaml'
 require 'etc'
 require 'fileutils'
 
-f = FcmAgent.new
+f = FCM::Agent.new
 
 usermap = YAML.load(f.filedata)
 usermap.each do |username, data|

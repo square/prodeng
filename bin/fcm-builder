@@ -27,22 +27,6 @@ def print_blame(node, showfile)
     end
   end
 end
-
-def write_files(node, directory)
-  unless File.directory?(directory)
-    FileUtils.mkdir(directory)
-  end
-
-  unless File.directory?(File.join(directory, node.name))
-    FileUtils.mkdir(File.join(directory, node.name))
-  end
-  
-  node.files.each do |fname, contents|
-    File.open(File.join(directory, node.name, fname), 'w') do |f|
-      contents.each { |line| f.puts(line.content) }
-    end
-  end
-end
   
 opts = GetoptLong.new(['--datadir', '-d', GetoptLong::REQUIRED_ARGUMENT],
                       ['--outputdir', '-o', GetoptLong::REQUIRED_ARGUMENT],
@@ -51,7 +35,7 @@ opts = GetoptLong.new(['--datadir', '-d', GetoptLong::REQUIRED_ARGUMENT],
                       ['--blame', '-b', GetoptLong::NO_ARGUMENT],
                       ['--help', '-h', GetoptLong::NO_ARGUMENT])
 
-config = FcmConfig.new
+config = FCM::Config.new
 showhost = nil
 showfile = nil
 outputdir = nil
@@ -103,18 +87,28 @@ hostmap.each do |item|
   end
 end
 
+bucket_map = {}
 host_to_group.each do |h, groups|
   next if showhost and showhost != h
-  n = FcmNode.new(h, config)
-  allgroups = ""
+  n = FCM::Node.new(h, config)
+  group_list = []
   groups.each do |g|
+    group_list.push(g[0])
     n.add_group(g[0], g[1])
-    allgroups += " #{g[0]}"
   end
   n.generate!
 
+  bucket_name = FCM.bucketize(group_list)
+  if bucket_map.member?(bucket_name)
+    bucket_map[bucket_name].push(n)
+  else
+    bucket_map[bucket_name] = [n]
+  end
+end
+
+bucket_map.each_pair do |bucket, nodes|
   # this is where we'd write files out to disk to get rsync'd
-  write_files(n, outputdir) if outputdir
+  FCM.write_files(nodes, outputdir, bucket) if outputdir
   if showhost and showfile
     if blame
       print_blame(n, showfile)

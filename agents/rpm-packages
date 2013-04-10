@@ -2,7 +2,7 @@
 
 require '../lib/fcm-agent-tools.rb'
 
-f = FcmAgent.new
+f = FCM::Agent.new
 
 installed = {}
 
