@@ -1,4 +1,0 @@
-PUT_USERNAME_HERE:
-  sshkeys:
-    - ssh-rsa SOME_SSH_KEY
-    - ssh-rsa SOME_OTHER_KEY

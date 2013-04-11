@@ -1,8 +1,0 @@
-#!/usr/bin/ruby
-
-require '../lib/fcm-agent-tools.rb'
-
-f = FCM::Agent.new
-if f.install_file("/tmp/test.yaml")
-  puts "Something happened!"
-end

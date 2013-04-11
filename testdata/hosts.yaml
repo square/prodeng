@@ -1,9 +1,0 @@
-- BIGTCP:
-    - host1
-    - host3
-    - host4
-
-- CANARIES:
-    - host666
-    - host3
-    - host4
