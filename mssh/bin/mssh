@@ -39,11 +39,11 @@ optparse = OptionParser.new do |opts|
   opts.on('-d', '--debug', "Debug output") do |arg|
     options[:debug] = arg 
   end
-  opts.on('--sshopt',  "ssh options, default [-2, -oBatchMode=yes, -A]. Can be used multiple times.") do |arg|
+  opts.on('--sshopt OPT',  "ssh options, default [-2, -oBatchMode=yes, -A]. Can be used multiple times.") do |arg|
     options[:sshopt] ||= []
     options[:sshopt] << arg
   end
-  opts.on('--sshcmd', "Path to the ssh binary") do |arg|
+  opts.on('--sshcmd BINARY', "Path to the ssh binary") do |arg|
     options[:sshcmd] = arg
   end
   # option to merge stdin/stdout into one buf?
