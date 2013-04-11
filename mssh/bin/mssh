@@ -13,31 +13,31 @@ options = {
 }
 optparse = OptionParser.new do |opts|
   opts.on('-r', '--range RANGE', 'Requires a configured Range::Client. Use --hostlist if you do not use range') do |arg|
-    options[:range] = arg 
+    options[:range] = arg
   end
   opts.on('--hostlist x,y,z', Array, 'List of hostnames to execute on') do |arg|
-    options[:hostlist] = arg 
+    options[:hostlist] = arg
   end
   opts.on('-f', '--file FILE', 'List of hostnames in a FILE use (/dev/stdin) for reading from stdin') do |arg|
-    options[:file] = arg 
+    options[:file] = arg
   end
   opts.on('-m', '--maxflight 50', 'How many subprocesses? 50 by default') do |arg|
-    options[:maxflight] = arg 
+    options[:maxflight] = arg
   end
   opts.on('-t', '--timeout 60', 'How many seconds may each individual process take? 0 for no timeout') do |arg|
-    options[:timeout] = arg 
+    options[:timeout] = arg
   end
   opts.on('-g', '--global_timeout 600', 'How many seconds for the whole shebang 0 for no timeout') do |arg|
-    options[:global_timeout] = arg 
+    options[:global_timeout] = arg
   end
   opts.on('-c', '--collapse', "Collapse similar output ") do |arg|
-    options[:collapse] = arg 
+    options[:collapse] = arg
   end
   opts.on('-v', '--verbose', "verbose ") do |arg|
-    options[:verbose] = arg 
+    options[:verbose] = arg
   end
   opts.on('-d', '--debug', "Debug output") do |arg|
-    options[:debug] = arg 
+    options[:debug] = arg
   end
   opts.on('--sshopt OPT',  "ssh options, default [-2, -oBatchMode=yes, -A]. Can be used multiple times.") do |arg|
     options[:sshopt] ||= []
@@ -52,7 +52,8 @@ end
 optparse.parse!
 
 # default options
-options[:sshopt] ||= ["-2", "-oBatchMode=yes", "-A"]
+options[:sshopt] ||= []
+options[:sshopt] += ["-2", "-oBatchMode=yes", "-A"]
 options[:sshcmd] = "/usr/bin/ssh"
 
 targets = []
@@ -100,7 +101,7 @@ if (options[:collapse] and options[:range])
   # print a collapsed summary
   out_matches = Hash.new
   result.each do |r|
-    out = "" 
+    out = ""
     out += r[:stdout_buf].chomp if(!r[:stdout_buf].nil?)
     out += r[:stderr_buf].chomp if(!r[:stderr_buf].nil?)
     out_matches[out] = [] if out_matches[out].nil?
@@ -115,7 +116,7 @@ else
   # not collapse, print one per host
   result.each do |r|
     target = command_to_target[r[:command].object_id]
-    out = "" 
+    out = ""
     out += r[:stdout_buf].chomp if(!r[:stdout_buf].nil?)
     out += r[:stderr_buf].chomp if(!r[:stderr_buf].nil?)
     if (r[:retval] == 0 )
