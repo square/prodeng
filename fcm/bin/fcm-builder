@@ -1,0 +1,122 @@
+#!/usr/bin/ruby
+$:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
+
+require 'rubygems'
+require 'fcm'
+require 'fileutils'
+require 'getoptlong'
+require 'yaml'
+
+def usage
+  puts "Usage: #{$0} -d DATA_DIRECTORY [-o OUTPUT-DIRECTORY] [-H HOST -f FILE] [--blame]"
+  puts " -o not allowed in conjunction with -H"
+  puts " -H and -f must be used together"
+  exit(1)
+end
+
+def print_file(node, showfile)
+  node.files.each do |fname, contents|
+    next unless fname == showfile
+    contents.each { |line| puts line.content }
+  end
+end
+
+def print_blame(node, showfile)
+  node.files.each do |fname, contents|
+    next unless fname == showfile
+    contents.each do |line|
+      puts line.group + ": " + line.content
+    end
+  end
+end
+  
+opts = GetoptLong.new(['--datadir', '-d', GetoptLong::REQUIRED_ARGUMENT],
+                      ['--outputdir', '-o', GetoptLong::REQUIRED_ARGUMENT],
+                      ['--host', '-H', GetoptLong::REQUIRED_ARGUMENT],
+                      ['--file', '-f', GetoptLong::REQUIRED_ARGUMENT],
+                      ['--blame', '-b', GetoptLong::NO_ARGUMENT],
+                      ['--help', '-h', GetoptLong::NO_ARGUMENT])
+
+config = FCM::Config.new
+showhost = nil
+showfile = nil
+outputdir = nil
+blame = false
+
+opts.each do |opt, arg|
+  case opt
+  when '--help'
+    usage()
+  when '--datadir'
+    config.datadir = arg
+  when '--outputdir'
+    outputdir = arg
+  when '--host'
+    showhost = arg
+  when '--file'
+    showfile = arg
+  when '--blame'
+    blame = true
+  end
+end
+
+usage() if outputdir and showhost
+usage() if showhost and not showfile
+
+# required args
+[config.datadir].each do |v|
+  usage() unless v
+end
+
+hostmap = {}
+File.open(File.join(config.datadir, "hosts.yaml")) do |f|
+  hostmap = YAML.load(f.read)
+end
+
+host_to_group = {}
+
+hostmap.each do |item|
+  item.each do |group, hosts|
+    hosts.each do |h|
+      # all hosts are in DEFAULT first
+      unless host_to_group.has_key?(h)
+        host_to_group[h] = [["DEFAULT", 
+                             File.join(config.datadir, "groups", "DEFAULT")]]
+      end
+      host_to_group[h].push([group, 
+                             File.join(config.datadir, "groups", group)])
+    end
+  end
+end
+
+bucket_map = {}
+host_to_group.each do |h, groups|
+  next if showhost and showhost != h
+  n = FCM::Node.new(h, config)
+  group_list = []
+  groups.each do |g|
+    group_list.push(g[0])
+    n.add_group(g[0], g[1])
+  end
+  n.generate!
+
+  bucket_name = FCM.bucketize(group_list)
+  if bucket_map.member?(bucket_name)
+    bucket_map[bucket_name].push(n)
+  else
+    bucket_map[bucket_name] = [n]
+  end
+end
+
+bucket_map.each_pair do |bucket, nodes|
+  # this is where we'd write files out to disk to get rsync'd
+  FCM.write_files(nodes, outputdir, bucket) if outputdir
+  if showhost and showfile
+    if blame
+      print_blame(n, showfile)
+    else
+      print_file(n, showfile)
+    end
+  end
+end
+

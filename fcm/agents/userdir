@@ -1,0 +1,40 @@
+#!/usr/bin/ruby
+
+require '../lib/fcm-agent-tools.rb'
+require 'yaml'
+require 'etc'
+require 'fileutils'
+
+f = FCM::Agent.new
+
+usermap = YAML.load(f.filedata)
+usermap.each do |username, data|
+  userdir = Etc.getpwnam(username)['dir']
+
+  unless File.directory?(userdir)
+    puts "Creating homedir #{userdir} for #{username}"
+    FileUtils.mkdir(userdir, :mode => 0755)
+    FileUtils.chown(username, username, userdir)
+  end
+  
+  sshdir = File.join(userdir, ".ssh")
+  unless File.directory?(sshdir)
+    puts "Creating ssh directory #{sshdir} for #{username}"
+    FileUtils.mkdir(sshdir, :mode => 0755)
+    FileUtils.chown(username, username, sshdir)
+  end
+
+  if data.has_key?('sshkeys')
+    authorized_keys = ""
+    data['sshkeys'].each do |key|
+      authorized_keys += key
+      authorized_keys += "\n"
+    end
+
+    authorized_keys_file = File.join(userdir, ".ssh", "authorized_keys")
+    if f.install_file(authorized_keys_file, 
+                      username, username, 0644, authorized_keys)
+      puts "Installed keys into #{authorized_keys_file}"
+    end
+  end
+end
