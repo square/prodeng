@@ -52,7 +52,8 @@ end
 optparse.parse!
 
 # default options
-options[:sshopt] ||= ["-2", "-oBatchMode=yes", "-A"]
+options[:sshopt] ||= []
+options[:sshopt] += ["-2", "-oBatchMode=yes", "-A"]
 options[:sshcmd] = "/usr/bin/ssh"
 
 targets = []
