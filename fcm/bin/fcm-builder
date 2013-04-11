@@ -1,9 +1,11 @@
 #!/usr/bin/ruby
+$:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
 
-require '../lib/fcm.rb'
+require 'rubygems'
+require 'fcm'
+require 'fileutils'
 require 'getoptlong'
 require 'yaml'
-require 'fileutils'
 
 def usage
   puts "Usage: #{$0} -d DATA_DIRECTORY [-o OUTPUT-DIRECTORY] [-H HOST -f FILE] [--blame]"
