@@ -22,7 +22,7 @@
 #     run: sshd -fg
 #     log: svlogd -tt
 #     logsleep: 5
-#     loguser: nobody
+#
 #
 # All "run" scripts and "log" scripts WILL BE PREPENDED WITH AN "exec"!
 # Your run script MUST RUN IN THE FOREGROUND or you'll create a fork bomb.
@@ -38,8 +38,7 @@ require 'fileutils'
 # :stagedir, and :activatedir.  Then, s.create! to build it in the stagedir.
 # s.activate! to symlink it into the activedir.
 class Service
-  attr_accessor :name, :run, :log, :stagedir, :activatedir, :sleep, :logsleep,\
-                :loguser, :down
+  attr_accessor :name, :run, :log, :stagedir, :activatedir, :sleep, :logsleep
 
   # Methods to wrap your runscript and logscript around something safe
   def runscript
@@ -48,9 +47,7 @@ class Service
 $stderr.reopen(STDOUT)
 require 'yaml'
 sleep #{self.sleep}
-data = YAML.load(DATA.read)
-run = data.map {|s| s.to_s}
-exec *run
+exec *YAML.load(DATA.read)
 sleep 2
 __END__
 #{self.run.to_yaml}
@@ -63,9 +60,7 @@ EOF
 #!/usr/bin/ruby
 require 'yaml'
 sleep #{self.logsleep}
-data = YAML.load(DATA.read)
-run = data.map {|s| s.to_s}
-exec *run
+exec *YAML.load(DATA.read)
 sleep 2
 __END__
 #{self.log.to_yaml}
@@ -84,26 +79,36 @@ EOF
     end
     if not File.directory?(File.join(@stagedir, "log"))
       puts "Creating directory #{@stagedir}/log"
-      Kernel.system("mkdir", "-p", File.join(@stagedir, "log"))
+      Kernel.system("mkdir", "-m", "0755", "-p", File.join(@stagedir, "log"))
       modified = true
     end
+    # Create supervise and ok fifo manually to ensure proper permissions
+    if not File.directory?(File.join(@stagedir, "supervise"))
+      puts "Creating directory #{@stagedir}/supervise"
+      Kernel.system("mkdir", "-m", "0755", "-p", File.join(@stagedir, "supervise"))
+    end
+    # and fifo
+    if not File.pipe?(File.join(@stagedir, "supervise", "ok"))
+      puts "Creating fifo #{@stagedir}/supervise/ok"
+      Kernel.system("mkfifo", "-m", "0622", File.join(@stagedir, "supervise", "ok"))
+    end
+    # and for logdir
+    if not File.directory?(File.join(@stagedir, "log", "supervise"))
+      puts "Creating directory #{@stagedir}/log/supervise"
+      Kernel.system("mkdir", "-m", "0755", "-p", File.join(@stagedir,"log", "supervise"))
+    end
+    # and logdir fifo
+    if not File.pipe?(File.join(@stagedir, "log", "supervise", "ok"))
+      puts "Creating fifo #{@stagedir}/log/supervise/ok"
+      Kernel.system("mkfifo", "-m", "0622", File.join(@stagedir, "log", "supervise", "ok"))
+    end
+
     if not File.directory?(File.join(@stagedir, "log", "main"))
       puts "Creating directory #{@stagedir}/log/main"
-      Kernel.system("mkdir", "-p", File.join(@stagedir, "log", "main"))
-      FileUtils.chown(self.loguser, self.loguser, 
+      Kernel.system("mkdir", "-m", "0755", "-p", File.join(@stagedir, "log", "main"))
+      FileUtils.chown('nobody', 'nobody', 
                       File.join(@stagedir, "log", "main"))
       modified = true
-    end
-    if @down
-      if not File.file?(File.join(@stagedir, "down"))
-        puts "Creating down file #{@stagedir}/down"
-        Kernel.system("touch", File.join(@stagedir, "down"))
-      end
-    else
-      if File.file?(File.join(@stagedir, "down"))
-        puts "Removing down file #{@stagedir}/down"
-        File.unlink(File.join(@stagedir, "down"))
-      end
     end
 
     # Test to see if we need to edit the run and log/run scripts
@@ -170,7 +175,7 @@ EOF
 end
 
 def usage
-  puts "Usage: $0 --conf CONFIG_DIRECTORY -s STAGING_DIRECTORY "
+  puts "Usage: $0 --conf CONFIG_FILE -s STAGING_DIRECTORY "
   puts "          -d INSTALL_DIRECTORY"
   exit(1)
 end
@@ -243,22 +248,13 @@ confdata.each do |k, d|
   if d.has_key?('logsleep') and d['logsleep'].to_i >= 0
     logsleep = d['logsleep'].to_i
   end
-  loguser = 'nobody'
-  if(d.has_key?('loguser'))
-    loguser= d['loguser']
-  end
   if d.member?('log')
     log = d['log']
     if log.class != Array
       raise "Error, bad args passed to log statement"
     end
   else
-    log = ['chpst',"-u#{loguser}",'svlogd','-tt','./main']
-  end
-  if d.has_key?('down')
-    down = true
-  else
-    down = false
+    log = %w{chpst -unobody svlogd -tt ./main}
   end
   
   s = Service.new
@@ -267,8 +263,6 @@ confdata.each do |k, d|
   s.log = log
   s.sleep = sleep
   s.logsleep = logsleep
-  s.loguser  = loguser
-  s.down = down
   s.stagedir = File.join(stagedir, servicename)
   s.activatedir = File.join(activatedir, servicename)
 
@@ -281,17 +275,7 @@ unless File.directory?(activatedir)
   if File.exists?(activatedir)
     raise "#{activatedir} exists but is not a directory, bailing"
   end
-  puts "Creating directory #{activatedir}"
   FileUtils.mkdir(activatedir)
-end
-
-# make sure /var/service-stage exists
-unless File.directory?(stagedir)
-  if File.exists?(stagedir)
-    raise "#{stagedir} exists but is not a directory, bailing"
-  end
-  puts "Creating directory #{stagedir}"
-  FileUtils.mkdir(stagedir)
 end
 
 # activate them by symlinking the staged service into the activate directory
@@ -319,6 +303,7 @@ Dir.open(stagedir) do |dir|
     found_staging.push(File.join(stagedir, file))
   end
 end
+
 
 # find every service found in the activate directory
 Dir.open(activatedir) do |dir|
