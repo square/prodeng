@@ -1,0 +1,19 @@
+#!/usr/bin/ruby
+
+require 'rubygems'
+require 'sequel'
+require 'nokogiri'
+require 'pp'
+require 'dmarc/report/aggregate'
+require 'dmarc/report/store/sql'
+require 'dmarc/report/view/sql'
+
+m = DMARC::Report::Aggregate.new
+
+m.parse(File.open("google.com.xml").read)
+
+#d = DMARC::Report::Store::SQL.new
+#d.save_aggregate_report(m)
+
+v = DMARC::Report::View::SQL.new
+pp v.get_all_reports_paginated(1,10).all
