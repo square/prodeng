@@ -1,0 +1,21 @@
+#!/usr/bin/env ruby
+
+$:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
+require 'rubygems'
+require 'wtf'
+require 'ansi2html'
+
+unless ARGV.length == 1
+  puts "Usage: #{$0} thing"
+  exit 1
+end
+
+wtf = WTF::Wtf.new
+wtf.query(ARGV[0])
+wtf.output.each do |k, v|
+  puts v
+  if v != ""
+    puts ""
+  end
+end
+

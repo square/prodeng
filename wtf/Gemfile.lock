@@ -1,0 +1,31 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    ascii_charts (0.9.1)
+    json (1.8.0)
+    mime-types (1.23)
+    rack (1.5.2)
+    rack-protection (1.5.0)
+      rack
+    rangeclient (0.0.7)
+      rest-client
+    rest-client (1.6.7)
+      mime-types (>= 1.16)
+    sinatra (1.3.4)
+      rack (~> 1.4)
+      rack-protection (~> 1.3)
+      tilt (~> 1.3, >= 1.3.3)
+    term-ansicolor (1.2.2)
+      tins (~> 0.8)
+    tilt (1.3.7)
+    tins (0.8.2)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  ascii_charts
+  json
+  rangeclient (>= 0.0.7)
+  sinatra
+  term-ansicolor

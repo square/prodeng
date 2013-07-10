@@ -1,0 +1,36 @@
+#!/usr/bin/env ruby
+
+$:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
+require 'rubygems'
+require 'wtf'
+require 'ansi2html'
+require 'sinatra'
+require 'ansi2html'
+
+set :port, 8082
+set :run, true
+set :environment, :production
+
+get '/' do
+  thing = params['query']
+  thing = 'wtf' unless params.has_key?('query')
+  wtf = WTF::Wtf.new
+  wtf.query(thing)
+  total_output = ''
+  wtf.output.each do |k, v|
+    total_output += v
+  end
+  a2h = WTF::Ansi2html.new(total_output, thing)
+  a2h.output
+end
+
+get '/:thing' do |thing|
+  wtf = WTF::Wtf.new
+  wtf.query(thing)
+  total_output = ''
+  wtf.output.each do |k, v|
+    total_output += v
+  end
+  a2h = WTF::Ansi2html.new(total_output, thing)
+  a2h.output
+end
