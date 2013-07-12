@@ -2,7 +2,6 @@ require 'rubygems'
 require 'sequel'
 require 'pp'
 
-
 module DMARC
   class Report
     class View
@@ -15,8 +14,29 @@ end
 class DMARC::Report::View::SQL
   attr :db
 
-  def initialize()
-    @db = Sequel.connect('sqlite://dmarc-reports.db')
+  def initialize(connstr)
+    @db = Sequel.connect(connstr)
+  end
+  
+  # summary[your senders|forwarded|unknown]
+  #               count =    xxx
+  #               spf_fail = xxx
+  #               spf_pass = xxx
+  #               dkim_pass = xxx
+  #               dkim_fail = xxx
+  #
+  # drill by header_from or domain_name
+  def summary(args)
+    out = {'known'=> {}, 'forwarded'=>{},'unknown'=>{} }
+    args[:end] ||= Time.now
+    args[:start]   ||= args[:end] - 10*86400 # 10 days
+    get_all_reports_by_date(args[:start],args[:end]).each do |r|
+      get_all_records_filtered("report_metadata_id",r.id).each do |record|
+        # if record.source_ip is part of authorized_senders
+        out['known']['count'] += record.count
+      end
+    end
+    return out
   end
 
   def get_all_reports(limit)
@@ -28,7 +48,7 @@ class DMARC::Report::View::SQL
   end
 
   def get_all_reports_by_date(s,e)
-    return @db[:ReportMetadata].where{:begin >= s && :end <= e}
+    return @db[:ReportMetadata].where{begin_date >= s && end_date <= e}
   end
 
   def get_all_reports_filtered(k,v)

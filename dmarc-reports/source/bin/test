@@ -1,0 +1,12 @@
+#!/usr/bin/ruby
+$:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
+require 'rubygems'
+require 'json'
+require 'dmarc/report/view/sql'
+require 'pp'
+
+@conn = DMARC::Report::View::SQL.new("sqlite:///tmp/dmarc-reports.sqlite")
+pp  @conn.summary({})
+
+__END__
+

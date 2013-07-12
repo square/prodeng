@@ -1,0 +1,44 @@
+#!/usr/bin/ruby
+
+require 'rubygems'
+require 'yaml'
+require 'optparse'
+
+require 'dmarc/report/aggregate'
+require 'dmarc/report/store/sql'
+require 'dmarc/report/view/sql'
+
+options = {
+    :config => "./dmarc-aggregate.yaml",
+}
+optparse = OptionParser.new do |opts|
+  opts.on('-c', '--config config', 'Path to YAML configuration') do |arg|
+    options[:config] = arg
+  end
+  opts.on_tail('-h', '--help', "This help message") do
+    puts opts
+   exit
+  end
+end
+optparse.parse!
+
+settings = YAML::load_file(options[:config])
+source =
+if(settings['source']['driver'].downcase == "imap")
+  require 'dmarc/report/source/imap'
+  ['server','username','password'].each do |s|
+    raise "missing #{s}" unless(settings['source']['params'][s])
+  end
+  source = DMARC::Report::Source::IMAP.new(settings['source']['params'])
+else
+  raise "source type not implemented"
+end
+
+storage=
+if(settings['storage']['driver'].downcase == "sql")
+  storage = DMARC::Report::Store::SQL.new(settings['storage']['params']['connstr'])
+  source.fetch_aggregate_reports(:mark_seen => false) do |m|
+   puts "Saving report from " + m.ReportMetadata.org_name
+   storage.save_aggregate_report(m)
+  end
+end

@@ -1,7 +1,6 @@
 require 'rubygems'
 require 'sequel'
 require 'nokogiri'
-require 'pp'
 
 module DMARC
   class Report
@@ -13,7 +12,7 @@ end
 class DMARC::Report::Aggregate
   attr_accessor :ReportMetadata,:PolicyPublished,:Records
   class ReportMetadata
-    attr_accessor :org_name,:email,:extra_contact_info,:report_id,:error,:begin,:end
+    attr_accessor :org_name,:email,:extra_contact_info,:report_id,:error,:begin_date,:end_date
   end
   class PolicyPublished
     attr_accessor :domain,:adkim,:aspf,:p,:sp,:pct
@@ -34,7 +33,7 @@ class DMARC::Report::Aggregate
     ["begin","end"].each { |s|
       # calls accessor assignment method
       @ReportMetadata.send(
-        "#{s}=",
+        "#{s}_date=",
         f.root.at_xpath("/feedback/report_metadata/date_range/#{s}").text.to_i)
     }
 

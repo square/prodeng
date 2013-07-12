@@ -15,12 +15,8 @@ end
 class DMARC::Report::Store::SQL
   attr :db
 
-  def self.connect()
-    Sequel.connect('sqlite://dmarc-reports.db')
-  end
-
-  def initialize()
-    @db = Sequel.connect('sqlite://dmarc-reports.db')
+  def initialize(connstr)
+    @db = Sequel.connect(connstr)
   end
 
   def bootstrap
@@ -30,8 +26,8 @@ class DMARC::Report::Store::SQL
       String  :email
       String  :extra_contact_info
       String  :report_id
-      Integer :begin
-      Integer :end
+      Integer :begin_date # begin conflicts with kw in ruby
+      Integer :end_date   # end conflicts with kw in ruby
       String  :error
     end
 
