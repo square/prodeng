@@ -88,7 +88,7 @@ class Range::Client
       node.gsub!(/^([a-z]+)(\d+)([a-z]\w+)\./) { "#{$1}#{$2}.UNDOXXX#{$3}." }
     end
     result = _simple_compress(nodes)
-    result.each do |r|
+    result.each_char do |r|
       r.gsub!(/(\d+\.\.\d+)\.UNDOXXX/) {"{#{$1}}"}
       r.gsub!(/(\d+)\.UNDOXXX/) {"#{$1}"}
     end
