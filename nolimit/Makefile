@@ -3,3 +3,6 @@ all:
 
 clean:
 	rm -f *.o nolimit
+
+test:
+	sudo ./nolimit true
