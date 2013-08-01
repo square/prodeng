@@ -4,3 +4,6 @@ all:
 
 clean:
 	rm -f *.o exec_args
+
+test:
+	./exec_args true
