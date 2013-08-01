@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # ugly hack to build/test multiple projects in one repo
 
 set -x
