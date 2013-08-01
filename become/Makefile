@@ -4,3 +4,6 @@ all:
 
 clean:
 	rm -f *.o become
+
+test:
+	sudo ./become nobody true 
