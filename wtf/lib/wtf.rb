@@ -4,7 +4,7 @@ require 'rubygems'
 require 'provider'
 require 'providers/ascii'
 require 'providers/range'
-require 'providers/graphite'
+require 'providers/dns'
 
 module WTF
   class Wtf
@@ -13,9 +13,8 @@ module WTF
       @output = {}
       @providers = [
                     WTF::ASCIIProvider.new,
-                    #WTF::RangeProvider.new,
-                    #WTF::GraphiteProvider.new, # this can be annoying
-                   ]
+                    WTF::RangeProvider.new,
+                    WTF::DNSProvider.new]
     end
 
     def newline(provider, text)

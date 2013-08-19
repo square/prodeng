@@ -5,6 +5,8 @@ include Term::ANSIColor
 module WTF
   class Provider
     attr_accessor :name
+    attr_accessor :weight
+
     def newline(text)
       @output = "" if @output.nil?
       @output += text + "\n"
@@ -19,10 +21,12 @@ module WTF
     end
 
     def fact(label, text)
+      return if text.nil?
       newline label + ": " + reset + bold + green + text + reset
     end
 
     def memberlist(label, members)
+      return nil if members.length == 0
       newline label + ":"
       members.each do |m|
         newline "   " + reset + bold + yellow + m + reset
