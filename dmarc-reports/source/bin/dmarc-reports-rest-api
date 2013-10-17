@@ -1,0 +1,63 @@
+#!/usr/bin/ruby
+$:.unshift File.join(File.dirname(__FILE__), '..', 'lib')
+require 'rubygems'
+require 'json'
+require 'sinatra'
+require 'dmarc/report/view/sql'
+
+use Rack::Logger
+
+# Basic settings
+set :port, 8081
+set :run, true
+set :environment, :staging
+set :down_file, "/var/service/opsdb_rest_api/down"
+set :public, "./public"
+
+configure do
+end
+
+helpers do
+  def logger
+    request.logger
+  end
+end
+
+before do
+  # get a connection to backing store
+  @conn = DMARC::Report::View::SQL.new("sqlite:///tmp/dmarc-reports.sqlite")
+end
+
+after do
+end
+
+get '/api/v1/summary' do
+  @conn.summary({}).to_json
+end
+
+# routes to get reports metadata
+get '/api/v1/reports' do
+  @conn.get_all_reports(100).to_json
+end
+
+get '/api/v1/reports/:limit' do |limit|
+  @conn.get_all_reports(limit).to_json
+end
+
+get '/api/v1/reports/paginate/:page/:count' do |page,count|
+  page = URI.unescape(page).to_i
+  count = URI.unescape(count).to_i
+
+  @conn.get_all_reports_paginated(page,count).to_json
+end
+
+get '/api/v1/reports/:param/:value' do |param,value|
+  @conn.get_all_reports_filtered(param,value).to_json
+end
+
+# routes to get records within reports
+get '/api/v1/record/:param/:value' do |param,value|
+  param = URI.unescape(param)
+  value = URI.unescape(value)
+  @conn.get_all_records_filtered(param,value).to_json
+end

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>DMARC</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Web interface for dmarc reports">
+  <link href="./css/bootstrap.css" rel="stylesheet">
+  <link href="./css/bootstrap-responsive.css" rel="stylesheet">
+  <link href="./css/DT_bootstrap.css" rel="stylesheet">
+  <style>
+    body {
+        padding-top: 60px; 
+    }
+    .modal-container {
+
+        width: 100%;
+        height: 100%;
+    }
+  </style>
+  <script src="./js/jquery.js"></script>
+  <script src="./js/bootstrap.min.js"></script>
+  <script src="./js/dmarc.reports.js"></script>
+  <script src="./js/jquery.dataTables.js"></script>
+  <script src="./js/DT_bootstrap.js"></script>
+</head>
+
+<body>
+    <div class="navbar navbar-fixed-top">
+        <div class="navbar-inner">
+            <div class="container">
+                <a class="btn btn-mini btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </a>
+                <a class="brand" href="#">dmarc reports</a>
+                <div class="nav-collapse">
+                <ul class="nav">
+                    <li><a href="/summary.html">Summary</a></li>
+                    <li class=active ><a href="#">Reports</a></li>
+                </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row" >
+        <div class="span10">
+            <div class="row">
+                <div class="span2"></div>
+                <div class="span8">
+                <form class="form form-inline">
+                  <select id="header_from">
+                    <option> stage.squareup.com </option>
+                    <option> squareup.com </option>
+                  </select>
+                  <select id="Organization">
+                    <option> Yahoo! </option>
+                    <option> Google </option>
+                  </select>
+                  <div class="input-append date" id="dp3" data-date-format="dd-mm-yyyy">
+                        <input class="span2" size="16" type="text" value="start" readonly><span class="add-on"><i class="icon-th"></i></span>
+                      </div>
+                  <div class="input-append date" id="dp3" data-date-format="dd-mm-yyyy">
+                        <input class="span2" size="16" type="text" value="end" readonly><span class="add-on"><i class="icon-th"></i></span>
+                      </div>
+                </form>
+                </form>
+
+                 <div id="reportDetailTableDiv">
+                     <hr><div id="reportDetailHeader"><p><strong>Details</strong></p></div>
+                     <table id="reportDetailTable"  cellpadding="0" cellspacing="0" border="0" class="table table-condensed table-striped sortable">
+                       <thead>
+                         <td> header_from </td>
+                         <td> disposition </td>
+                         <td> count </td>
+                         <td> source_ip </td>
+                         <td> dkim </td>
+                         <td> spf </td>
+                       </thead>
+                       <tbody id="reportDetailTableBody"></tbody>
+                     </table>
+                 </div>
+                   <div id="reportTableDiv">
+                     <hr>
+                     <table id="reportTable"  cellpadding="0" cellspacing="0" border="0" class="table table-condensed table-striped sortable">
+                       <thead>
+                         <td>author</td>
+                         <td>begin</td>
+                         <td>end</td>
+                         <td>id</td>
+                       </thead>
+                       <tbody id="reportsTableBody">
+                       </tbody>
+                    </table>
+                   </div>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+    </div>
+
+  </body>
+</html>
