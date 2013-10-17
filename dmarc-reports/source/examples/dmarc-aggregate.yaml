@@ -1,0 +1,24 @@
+# storage for parsed dmarc reports. Only SQL databases
+# are supported.
+storage:
+  driver: sql
+  params:
+    connstr: 'sqlite:///tmp/dmarc-reports.sqlite'
+# source for dmarc reports. supported drivers include
+# imap/directory
+# Reports fetched by IMAP are assumed to be in zip
+# format as per DMARC specification
+source:
+  driver: imap
+  params:
+    username: xxxx
+    password: xxxx
+    ssl: true
+    port: 993
+    server: imap.gmail.com
+   #folder:
+# allowed IPs to send email per domain
+# list one line per subnet
+spf_authorized_ips:
+  'examplecom':
+    - 127.0.0.1/24

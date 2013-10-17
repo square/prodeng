@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>DMARC</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Web interface for dmarc reports">
+  <link href="./css/bootstrap.css" rel="stylesheet">
+  <link href="./css/bootstrap-responsive.css" rel="stylesheet">
+  <link href="./css/DT_bootstrap.css" rel="stylesheet">
+  <style>
+    body {
+        padding-top: 60px; 
+    }
+    .small_plot {
+      height: 300px;
+
+    }
+  </style>
+  <script src="./js/jquery.js"></script>
+  <script src="./js/bootstrap.min.js"></script>
+  <script src="./js/dmarc.common.js"></script>
+  <script src="./js/jquery.dataTables.js"></script>
+  <script src="./js/jquery.flot.js"></script>
+  <script src="./js/jquery.flot.time.js"></script>
+  <script src="./js/jquery.flot.stack.js"></script>
+  <script src="./js/DT_bootstrap.js"></script>
+</head>
+
+<body>
+    <div class="navbar navbar-fixed-top">
+        <div class="navbar-inner">
+            <div class="container">
+                <a class="btn btn-mini btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </a>
+                <a class="brand" href="#">dmarc reports</a>
+                <div class="nav-collapse">
+                <ul class="nav">
+                    <li class=active ><a href="#">Summary</a></li>
+                    <li><a href="/reports.html">Reports</a></li>
+                </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row" >
+        <div class="span10">
+            <div class="row">
+                <div class="span2"></div>
+                <div class="span8">
+                  <h3> Mail Volume stacked bar chart with threat(red),green(known) for last 10 days </h3>
+                   
+
+                  <form>
+                    <select id="Sender Classification">
+                      <option>Threat</option>
+                      <option>SPF authorized</option>
+                      <option>Forwarder</option>
+                    </select>
+                  </form>
+                   <div id="placeholder">
+                   </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+  </body>
+</html>
