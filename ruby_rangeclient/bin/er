@@ -16,7 +16,7 @@ optparse = OptionParser.new do |opts|
     options[:count] = arg 
   end
   opts.on('-s', '--sort', 'Sort expanded output') do |arg|
-    options[:sorted] = arg 
+    options[:sorted] = arg  # NOTE: This is a no-op. We always sort.
   end
   opts.on('-v', '--vip range:80', 'Which host or host:port to query') do |arg|
     host, port = arg.split(':', 2)
@@ -58,7 +58,7 @@ if options[:count]
 elsif not nodes.size.zero?
   # if we got a result, display it accordingly
   if options[:expand]
-    nodes.sort! if options[:sorted]
+    nodes = range._sort_nodes(nodes)
     nodes.each do |node|
       puts node
     end
