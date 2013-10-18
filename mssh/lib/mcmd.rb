@@ -144,7 +144,7 @@ class MultipleCmd
   def process_timeouts
     now = Time.now.to_i
     @subproc_by_pid.values.each do |p|
-      if (now - p.time_start) > self.perchild_timeout
+      if (now - p.time_start) > self.perchild_timeout if self.perchild_timeout > 0
         # expire this child process
         
         self.yield_proc_timeout.call(p) unless self.yield_proc_timeout.nil?
