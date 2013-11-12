@@ -10,7 +10,9 @@ options = {
   :maxflight => 50,
   :timeout => 60,
   :global_timeout => 600,
+  :sshopt => ["-2", "-oBatchMode=yes", "-A"],
 }
+sshopt_overridden = false
 optparse = OptionParser.new do |opts|
   opts.on('-r', '--range RANGE', 'Requires a configured Range::Client. Use --hostlist if you do not use range') do |arg|
     options[:range] = arg 
@@ -39,8 +41,14 @@ optparse = OptionParser.new do |opts|
   opts.on('-d', '--debug', "Debug output") do |arg|
     options[:debug] = arg 
   end
+  opts.on('-i', '--ignore-hostchecks', "ignore ssh host key checking") do |arg|
+    options[:sshopt] += ["-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=/dev/null", "-oLogLevel=error"]
+  end
   opts.on('--sshopt OPT',  "ssh options, default [-2, -oBatchMode=yes, -A]. Can be used multiple times.") do |arg|
-    options[:sshopt] ||= []
+    if not sshopt_overridden
+      options[:sshopt] = []
+      sshopt_overridden = true
+    end
     options[:sshopt] << arg
   end
   opts.on('--sshcmd BINARY', "Path to the ssh binary") do |arg|
@@ -52,7 +60,6 @@ end
 optparse.parse!
 
 # default options
-options[:sshopt] ||= ["-2", "-oBatchMode=yes", "-A"]
 options[:sshcmd] = "/usr/bin/ssh"
 
 targets = []
