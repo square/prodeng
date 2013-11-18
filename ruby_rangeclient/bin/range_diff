@@ -1,0 +1,31 @@
+#!/usr/bin/ruby
+
+require 'rubygems'
+require 'getoptlong'
+require 'rangeclient'
+
+first_range = ARGV.shift
+second_range = ARGV.shift
+raise "#{$0} <first range exp> <second range exp>" unless first_range and second_range
+
+r = Range::Client.new
+first_hosts = r.expand(first_range)
+second_hosts = r.expand(second_range)
+
+first_hosts.sort!
+second_hosts.sort!
+
+retval = 0
+if first_hosts == second_hosts
+  puts "Ranges are equal."
+else
+  if not (first_hosts - second_hosts).length.zero?
+    puts "Only in argv[1]: #{r.compress(first_hosts - second_hosts)}"
+    retval += 1
+  end
+  if not (second_hosts - first_hosts).length.zero?
+    puts "Only in argv[2]: #{r.compress(second_hosts - first_hosts)}"
+    retval += 1
+  end
+end
+exit(retval)
