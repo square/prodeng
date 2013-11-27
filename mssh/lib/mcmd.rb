@@ -14,6 +14,7 @@ class MultipleCmd
     # these are re-initialized after every run
     @subproc_by_pid = Hash.new
     @subproc_by_fd = Hash.new
+    @fds_by_pid = Hash.new
     @processed_commands = []
     # end items which are re-initialized
 
@@ -50,16 +51,19 @@ class MultipleCmd
     pid = fork
     if not pid.nil?
       # parent
+      # close the ends of the pipes we don't need
+      stdin_rd.close
+      stdout_wr.close
+      stderr_wr.close
       # for mapping to subproc by pid
       subproc.pid = pid
       @subproc_by_pid[pid] = subproc
       # for mapping to subproc by i/o handle (returned from select)
-      @subproc_by_fd[stdin_rd] = subproc
       @subproc_by_fd[stdin_wr] = subproc
       @subproc_by_fd[stdout_rd] = subproc
-      @subproc_by_fd[stdout_wr] = subproc
       @subproc_by_fd[stderr_rd] = subproc
-      @subproc_by_fd[stderr_wr] = subproc
+      # for mapping to parent and child fds by pid (to be closed later)
+      @fds_by_pid[pid] = [stdin_wr, stdout_rd, stderr_rd]
       
       self.yield_startcmd.call(subproc) unless self.yield_startcmd.nil?
     else
@@ -68,6 +72,10 @@ class MultipleCmd
       STDIN.reopen(stdin_rd)
       STDOUT.reopen(stdout_wr)
       STDERR.reopen(stderr_wr)
+      # close the ends of the pipes we don't need
+      stdin_wr.close
+      stdout_rd.close
+      stderr_rd.close
       noshell_exec(cmd)
       raise "can't be reached!!. exec failed!!"
     end
@@ -246,6 +254,10 @@ class MultipleCmd
     end
     just_reaped.each do |p|
       self.yield_wait.call(p) unless self.yield_wait.nil?
+      # close the parent and child ends of the pipes for this subproc
+      puts "just reaped subproc #{p.pid}. closing fds #{@fds_by_pid[p.pid].map(&:fileno).join(',')}." if self.debug
+      @fds_by_pid[p.pid].each { |fd| fd.close rescue true }
+      @fds_by_pid.delete(p.pid)
     end
   end
 
