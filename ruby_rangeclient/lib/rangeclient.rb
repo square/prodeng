@@ -5,7 +5,7 @@ require 'net/http'
 require 'cgi'
 
 class Range::Client
-  attr_accessor :host, :port, :timeout
+  attr_accessor :host, :port, :timeout, :rangeexception
 
   # used to split hostnames into component parts for compression
   @@NodeRegx = /
@@ -33,6 +33,7 @@ class Range::Client
     http.read_timeout = @timeout
     req = Net::HTTP::Get.new('/range/list?' + escaped_arg)
     resp = http.request(req)
+    @rangeexception = resp['rangeexception']
     return resp.body.split "\n"
   end
 
@@ -197,10 +198,10 @@ end
 
 if __FILE__ == $0
   require 'pp'
-  rangehost = ARGV.shift
   rangearg = ARGV.shift
-  r = Range::Client.new({:host => rangehost})
+  r = Range::Client.new
   hosts =  r.expand(rangearg)
   pp hosts
   pp r.compress(hosts)
+  pp r.rangeexception
 end
