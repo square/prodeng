@@ -42,7 +42,7 @@ in_range = ARGV.join ','
 
 if in_range.empty?
   puts optparse
-  puts "[ERROR] No range specified"
+  STDERR.puts "[ERROR] No range specified"
   exit 1
 end
 
@@ -51,6 +51,10 @@ if in_range  == '-'
 end
 
 nodes = range.expand(in_range)
+
+if not range.rangeexception.nil?
+  STDERR.puts "[WARNING] " + range.rangeexception
+end
 
 if options[:count]
   # if counting, return count
@@ -66,6 +70,6 @@ elsif not nodes.size.zero?
     puts range.compress(nodes)
   end
 else
-  puts "[WARNING] No nodes returned"
+  STDERR.puts "[WARNING] No nodes returned"
   exit 1
 end
