@@ -1,4 +1,5 @@
 // Copyright (c) 2014 Square, Inc
+
 package cpustat
 
 import (
