@@ -14,6 +14,7 @@ import (
 type CgroupStat struct {
 	Cgroups map[string]*PerCgroupStat
 	m       *metrics.MetricContext
+	Mountpoint string
 }
 
 func NewCgroupStat(m *metrics.MetricContext) *CgroupStat {
@@ -26,6 +27,7 @@ func NewCgroupStat(m *metrics.MetricContext) *CgroupStat {
 	if err != nil {
 		return c
 	}
+	c.Mountpoint = mountpoint
 
 	ticker := time.NewTicker(m.Step)
 	go func() {

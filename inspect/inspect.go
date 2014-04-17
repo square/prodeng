@@ -4,11 +4,11 @@ package main
 
 import (
 	"fmt"
+	"time"
+	"path/filepath"
 	"github.com/square/prodeng/inspect/cpustat"
 	"github.com/square/prodeng/inspect/memstat"
 	"github.com/square/prodeng/metrics"
-	"path"
-	"time"
 )
 
 type ByteSize float64
@@ -47,6 +47,7 @@ func (b ByteSize) String() string {
 	return fmt.Sprintf("%.2fB", b)
 }
 
+// XXX: make it OS agnostic
 func main() {
 
 	// Initialize a metric context with step 1 second and maximum
@@ -54,34 +55,65 @@ func main() {
 	m := metrics.NewMetricContext("system", time.Millisecond*1000, 3)
 
 	// Collect cpu/memory metrics
-	cpu := cpustat.New(m)
-	mem := memstat.New(m)
+	cstat := cpustat.New(m)
+	mstat := memstat.New(m)
 
 	cg_mem := memstat.NewCgroupStat(m)
 	cg_cpu := cpustat.NewCgroupStat(m)
 
-	fmt.Println("Gathering metrics....")
+	type cg_stat struct {
+		cpu *cpustat.PerCgroupStat
+		mem *memstat.PerCgroupStat
+	}
+
+	cg_stats := make(map[string]*cg_stat)
 
 	// Check metrics every 2s
 	ticker := time.NewTicker(time.Millisecond * 1000 * 2)
 	for _ = range ticker.C {
 		fmt.Println("--------------------------")
 		fmt.Printf(
-			"total usage: cpu: %3.1f%%, mem: %3.1f%% (%s/%s)\n",
-			cpu.Usage(), (mem.Usage()/mem.Total())*100,
-			ByteSize(mem.Usage()), ByteSize(mem.Total()))
+			"total: cpu: %3.1f%%, mem: %3.1f%% (%s/%s)\n",
+			cstat.Usage(), (mstat.Usage()/mstat.Total())*100,
+			ByteSize(cstat.Usage()), ByteSize(mstat.Total()))
 
-		for name, c := range cg_mem.Cgroups {
-			fmt.Printf(
-				"cgroup: %s, mem: %3.1f%% (%s/%s) \n", path.Base(name),
-				(c.Usage()/c.SoftLimit())*100,
-				ByteSize(c.Usage()), ByteSize(c.SoftLimit()))
+		// so much for printing cpu/mem stats for cgroup together
+		for name, mem := range cg_mem.Cgroups {
+			name,_ = filepath.Rel(cg_mem.Mountpoint,name)
+			_,ok := cg_stats[name]
+			if !ok {
+				cg_stats[name] = new(cg_stat)
+			}
+			cg_stats[name].mem = mem
 		}
 
-		for name, c := range cg_cpu.Cgroups {
-			fmt.Printf(
-				"cgroup: %s, cpu: %3.1f%% (%.1f/%d)\n", path.Base(name),
-				c.Usage(), c.Quota(), (len(cpu.CPUS()) - 1))
+		for name, cpu := range cg_cpu.Cgroups {
+			name,_ = filepath.Rel(cg_cpu.Mountpoint,name)
+			_,ok := cg_stats[name]
+			if !ok {
+				cg_stats[name] = new(cg_stat)
+			}
+			cg_stats[name].cpu = cpu
+		}
+
+
+		for name,s := range cg_stats {
+			var out string
+
+			out = fmt.Sprintf("cgroup:%s ",name)
+			if s.cpu != nil {
+				out += fmt.Sprintf(
+				"cpu: %3.1f%% (%.1f/%d) ",
+				 s.cpu.Usage(), s.cpu.Quota(),
+				(len(cstat.CPUS()) - 1))
+			}
+			if s.mem != nil {
+				out += fmt.Sprintf(
+				"mem: %3.1f%% (%s/%s) ",
+				(s.mem.Usage()/s.mem.SoftLimit())*100,
+				ByteSize(s.mem.Usage()), ByteSize(s.mem.SoftLimit()))
+			}
+			fmt.Println(out)
 		}
 	}
 }
