@@ -4,17 +4,16 @@ package cpustat
 
 import (
 	"bufio"
+	"github.com/square/prodeng/inspect/misc"
+	"github.com/square/prodeng/metrics"
 	"math"
 	"os"
 	"regexp"
 	"time"
-	"github.com/square/prodeng/metrics"
-	"github.com/square/prodeng/inspect/misc"
 )
 
 type CPUStat struct {
 	All           *CPUStatPerCPU
-	Count         *metrics.Counter
 	Procs_running *metrics.Counter
 	Procs_blocked *metrics.Counter
 	cpus          map[string]*CPUStatPerCPU
@@ -93,7 +92,12 @@ func (o *CPUStat) Kernel() float64 {
 
 // CPUS returns all CPUS found as a slice of strings
 func (o *CPUStat) CPUS() []string {
-	return []string{"cpu0"}
+	ret := make([]string, 1)
+	for k, _ := range o.cpus {
+		ret = append(ret, k)
+	}
+
+	return ret
 }
 
 // PerCPUStat returns per-CPU stats for argument "cpu"

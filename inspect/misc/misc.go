@@ -4,15 +4,15 @@ package misc
 
 import (
 	"bufio"
-	"os"
-	"reflect"
-	"strconv"
-	"regexp"
-	"strings"
 	"errors"
-	"path/filepath"
-	"io/ioutil"
 	"github.com/square/prodeng/metrics"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"reflect"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
 type Interface interface{}
@@ -51,7 +51,7 @@ func InitializeMetrics(c Interface, m *metrics.MetricContext) {
 			f.Set(reflect.ValueOf(m.NewGauge(typeOfT.Field(i).Name)))
 		}
 		if f.Type().Elem() == reflect.TypeOf(metrics.Counter{}) {
-			f.Set(reflect.ValueOf(m.NewGauge(typeOfT.Field(i).Name)))
+			f.Set(reflect.ValueOf(m.NewCounter(typeOfT.Field(i).Name)))
 		}
 	}
 	return

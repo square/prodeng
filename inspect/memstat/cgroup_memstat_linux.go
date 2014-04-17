@@ -5,14 +5,14 @@ package memstat
 import (
 	"bufio"
 	"fmt"
+	"github.com/square/prodeng/inspect/misc"
+	"github.com/square/prodeng/metrics"
 	"math"
 	"os"
 	"reflect"
 	"regexp"
 	"strings"
 	"time"
-	"github.com/square/prodeng/inspect/misc"
-	"github.com/square/prodeng/metrics"
 )
 
 type CgroupStat struct {

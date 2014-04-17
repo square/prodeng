@@ -58,6 +58,7 @@ func main() {
 	mem := memstat.New(m)
 
 	cg_mem := memstat.NewCgroupStat(m)
+	cg_cpu := cpustat.NewCgroupStat(m)
 
 	fmt.Println("Gathering metrics....")
 
@@ -66,15 +67,21 @@ func main() {
 	for _ = range ticker.C {
 		fmt.Println("--------------------------")
 		fmt.Printf(
-			"cpu: %3.1f%%, mem: %3.1f%% (%s/%s)\n",
+			"total usage: cpu: %3.1f%%, mem: %3.1f%% (%s/%s)\n",
 			cpu.Usage(), (mem.Usage()/mem.Total())*100,
 			ByteSize(mem.Usage()), ByteSize(mem.Total()))
 
 		for name, c := range cg_mem.Cgroups {
 			fmt.Printf(
-				"cgroup: %s, mem: %3.1f%% (%s/%s)\n", path.Base(name),
+				"cgroup: %s, mem: %3.1f%% (%s/%s) \n", path.Base(name),
 				(c.Usage()/c.SoftLimit())*100,
 				ByteSize(c.Usage()), ByteSize(c.SoftLimit()))
+		}
+
+		for name, c := range cg_cpu.Cgroups {
+			fmt.Printf(
+				"cgroup: %s, cpu: %3.1f%% (%.1f/%d)\n", path.Base(name),
+				c.Usage(), c.Quota(), (len(cpu.CPUS()) - 1))
 		}
 	}
 }
