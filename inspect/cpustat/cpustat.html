@@ -1,0 +1,428 @@
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import "."</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				
+			</div>
+		</div>
+		
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#CPUStat">type CPUStat</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#New">func New(m *metrics.MetricContext) *CPUStat</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#CPUStat.CPUS">func (o *CPUStat) CPUS() []string</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#CPUStat.Collect">func (s *CPUStat) Collect()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#CPUStat.Kernel">func (o *CPUStat) Kernel() float64</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#CPUStat.PerCPUStat">func (o *CPUStat) PerCPUStat(cpu string) *CPUStatPerCPU</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#CPUStat.Usage">func (o *CPUStat) Usage() float64</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#CPUStat.UserSpace">func (o *CPUStat) UserSpace() float64</a></dd>
+				
+			
+				
+				<dd><a href="#CPUStatPerCPU">type CPUStatPerCPU</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#CPUStatPerCPUNew">func CPUStatPerCPUNew(m *metrics.MetricContext) *CPUStatPerCPU</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#CPUStatPerCPU.Kernel">func (o *CPUStatPerCPU) Kernel() float64</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#CPUStatPerCPU.Usage">func (o *CPUStatPerCPU) Usage() float64</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#CPUStatPerCPU.UserSpace">func (o *CPUStatPerCPU) UserSpace() float64</a></dd>
+				
+			
+				
+				<dd><a href="#CgroupStat">type CgroupStat</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewCgroupStat">func NewCgroupStat(m *metrics.MetricContext) *CgroupStat</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#CgroupStat.Collect">func (c *CgroupStat) Collect(mountpoint string)</a></dd>
+				
+			
+				
+				<dd><a href="#PerCgroupStat">type PerCgroupStat</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewPerCgroupStat">func NewPerCgroupStat(m *metrics.MetricContext, path string) *PerCgroupStat</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#PerCgroupStat.Quota">func (s *PerCgroupStat) Quota() float64</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#PerCgroupStat.Usage">func (s *PerCgroupStat) Usage() float64</a></dd>
+				
+			
+				
+				<dd><a href="#PerCgroupStatMetrics">type PerCgroupStatMetrics</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewPerCgroupStatMetrics">func NewPerCgroupStatMetrics(m *metrics.MetricContext, path string) *PerCgroupStatMetrics</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#PerCgroupStatMetrics.Collect">func (s *PerCgroupStatMetrics) Collect()</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h4>Package files</h4>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="/target/cgroup_cpustat_linux.go">cgroup_cpustat_linux.go</a>
+			
+				<a href="/target/cpustat_linux.go">cpustat_linux.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+		
+		
+		
+			
+			
+			<h2 id="CPUStat">type <a href="/target/cpustat_linux.go?s=184:380#L5">CPUStat</a></h2>
+			<pre>type CPUStat struct {
+    All           *<a href="#CPUStatPerCPU">CPUStatPerCPU</a>
+    Procs_running *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a>
+    Procs_blocked *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a>
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+			
+
+			
+
+			
+
+			
+
+			
+				
+				<h3 id="New">func <a href="/target/cpustat_linux.go?s=730:773#L26">New</a></h3>
+				<pre>func New(m *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#MetricContext">MetricContext</a>) *<a href="#CPUStat">CPUStat</a></pre>
+				
+				
+			
+
+			
+				
+				<h3 id="CPUStat.CPUS">func (*CPUStat) <a href="/target/cpustat_linux.go?s=2024:2057#L84">CPUS</a></h3>
+				<pre>func (o *<a href="#CPUStat">CPUStat</a>) CPUS() []<a href="/pkg/builtin/#string">string</a></pre>
+				<p>
+CPUS returns all CPUS found as a slice of strings
+</p>
+
+				
+				
+			
+				
+				<h3 id="CPUStat.Collect">func (*CPUStat) <a href="/target/cpustat_linux.go?s=1038:1065#L41">Collect</a></h3>
+				<pre>func (s *<a href="#CPUStat">CPUStat</a>) Collect()</pre>
+				<p>
+XXX: break this up into two smaller functions
+</p>
+
+				
+				
+			
+				
+				<h3 id="CPUStat.Kernel">func (*CPUStat) <a href="/target/cpustat_linux.go?s=1908:1942#L79">Kernel</a></h3>
+				<pre>func (o *<a href="#CPUStat">CPUStat</a>) Kernel() <a href="/pkg/builtin/#float64">float64</a></pre>
+				<p>
+Kernel returns time spent in userspace as percentage across all
+CPUs
+</p>
+
+				
+				
+			
+				
+				<h3 id="CPUStat.PerCPUStat">func (*CPUStat) <a href="/target/cpustat_linux.go?s=2211:2266#L94">PerCPUStat</a></h3>
+				<pre>func (o *<a href="#CPUStat">CPUStat</a>) PerCPUStat(cpu <a href="/pkg/builtin/#string">string</a>) *<a href="#CPUStatPerCPU">CPUStatPerCPU</a></pre>
+				<p>
+PerCPUStat returns per-CPU stats for argument &#34;cpu&#34;
+</p>
+
+				
+				
+			
+				
+				<h3 id="CPUStat.Usage">func (*CPUStat) <a href="/target/cpustat_linux.go?s=1625:1658#L67">Usage</a></h3>
+				<pre>func (o *<a href="#CPUStat">CPUStat</a>) Usage() <a href="/pkg/builtin/#float64">float64</a></pre>
+				<p>
+Usage returns current total CPU usage in percentage across all CPUs
+</p>
+
+				
+				
+			
+				
+				<h3 id="CPUStat.UserSpace">func (*CPUStat) <a href="/target/cpustat_linux.go?s=1764:1801#L73">UserSpace</a></h3>
+				<pre>func (o *<a href="#CPUStat">CPUStat</a>) UserSpace() <a href="/pkg/builtin/#float64">float64</a></pre>
+				<p>
+UserSpace returns time spent in userspace as percentage across all
+CPUs
+</p>
+
+				
+				
+			
+		
+			
+			
+			<h2 id="CPUStatPerCPU">type <a href="/target/cpustat_linux.go?s=382:728#L13">CPUStatPerCPU</a></h2>
+			<pre>type CPUStatPerCPU struct {
+    User        *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a>
+    UserLowPrio *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a>
+    System      *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a>
+    Idle        *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a>
+    Iowait      *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a>
+    Irq         *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a>
+    Softirq     *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a>
+    Steal       *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a>
+    Guest       *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a>
+    Total       *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a> <span class="comment">// total jiffies</span>
+}</pre>
+			
+
+			
+
+			
+
+			
+
+			
+				
+				<h3 id="CPUStatPerCPUNew">func <a href="/target/cpustat_linux.go?s=2377:2439#L100">CPUStatPerCPUNew</a></h3>
+				<pre>func CPUStatPerCPUNew(m *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#MetricContext">MetricContext</a>) *<a href="#CPUStatPerCPU">CPUStatPerCPU</a></pre>
+				<p>
+CPUStatPerCPUNew returns a struct representing counters for
+per CPU statistics
+</p>
+
+				
+			
+
+			
+				
+				<h3 id="CPUStatPerCPU.Kernel">func (*CPUStatPerCPU) <a href="/target/cpustat_linux.go?s=3556:3596#L144">Kernel</a></h3>
+				<pre>func (o *<a href="#CPUStatPerCPU">CPUStatPerCPU</a>) Kernel() <a href="/pkg/builtin/#float64">float64</a></pre>
+				<p>
+Kernel returns percentage of time spent in kernel
+on this CPU
+</p>
+
+				
+				
+			
+				
+				<h3 id="CPUStatPerCPU.Usage">func (*CPUStatPerCPU) <a href="/target/cpustat_linux.go?s=2868:2907#L116">Usage</a></h3>
+				<pre>func (o *<a href="#CPUStatPerCPU">CPUStatPerCPU</a>) Usage() <a href="/pkg/builtin/#float64">float64</a></pre>
+				<p>
+Usage returns total percentage of CPU used
+</p>
+
+				
+				
+			
+				
+				<h3 id="CPUStatPerCPU.UserSpace">func (*CPUStatPerCPU) <a href="/target/cpustat_linux.go?s=3244:3287#L132">UserSpace</a></h3>
+				<pre>func (o *<a href="#CPUStatPerCPU">CPUStatPerCPU</a>) UserSpace() <a href="/pkg/builtin/#float64">float64</a></pre>
+				<p>
+UserSpace returns percentage of time spent in userspace
+on this CPU
+</p>
+
+				
+				
+			
+		
+			
+			
+			<h2 id="CgroupStat">type <a href="/target/cgroup_cpustat_linux.go?s=176:269#L4">CgroupStat</a></h2>
+			<pre>type CgroupStat struct {
+    Cgroups map[<a href="/pkg/builtin/#string">string</a>]*<a href="#PerCgroupStat">PerCgroupStat</a>
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+			
+
+			
+
+			
+
+			
+
+			
+				
+				<h3 id="NewCgroupStat">func <a href="/target/cgroup_cpustat_linux.go?s=271:327#L9">NewCgroupStat</a></h3>
+				<pre>func NewCgroupStat(m *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#MetricContext">MetricContext</a>) *<a href="#CgroupStat">CgroupStat</a></pre>
+				
+				
+			
+
+			
+				
+				<h3 id="CgroupStat.Collect">func (*CgroupStat) <a href="/target/cgroup_cpustat_linux.go?s=613:660#L30">Collect</a></h3>
+				<pre>func (c *<a href="#CgroupStat">CgroupStat</a>) Collect(mountpoint <a href="/pkg/builtin/#string">string</a>)</pre>
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="PerCgroupStat">type <a href="/target/cgroup_cpustat_linux.go?s=940:1032#L48">PerCgroupStat</a></h2>
+			<pre>type PerCgroupStat struct {
+    Metrics *<a href="#PerCgroupStatMetrics">PerCgroupStatMetrics</a>
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+			
+
+			
+
+			
+
+			
+
+			
+				
+				<h3 id="NewPerCgroupStat">func <a href="/target/cgroup_cpustat_linux.go?s=1034:1109#L53">NewPerCgroupStat</a></h3>
+				<pre>func NewPerCgroupStat(m *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#MetricContext">MetricContext</a>, path <a href="/pkg/builtin/#string">string</a>) *<a href="#PerCgroupStat">PerCgroupStat</a></pre>
+				
+				
+			
+
+			
+				
+				<h3 id="PerCgroupStat.Quota">func (*PerCgroupStat) <a href="/target/cgroup_cpustat_linux.go?s=1580:1619#L74">Quota</a></h3>
+				<pre>func (s *<a href="#PerCgroupStat">PerCgroupStat</a>) Quota() <a href="/pkg/builtin/#float64">float64</a></pre>
+				
+				
+				
+			
+				
+				<h3 id="PerCgroupStat.Usage">func (*PerCgroupStat) <a href="/target/cgroup_cpustat_linux.go?s=1348:1387#L65">Usage</a></h3>
+				<pre>func (s *<a href="#PerCgroupStat">PerCgroupStat</a>) Usage() <a href="/pkg/builtin/#float64">float64</a></pre>
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="PerCgroupStatMetrics">type <a href="/target/cgroup_cpustat_linux.go?s=1688:1908#L79">PerCgroupStatMetrics</a></h2>
+			<pre>type PerCgroupStatMetrics struct {
+    Nr_periods     *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a>
+    Nr_throttled   *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a>
+    Throttled_time *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Counter">Counter</a>
+    Cfs_period_us  *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Gauge">Gauge</a>
+    Cfs_quota_us   *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#Gauge">Gauge</a>
+    <span class="comment">// contains filtered or unexported fields</span>
+}</pre>
+			
+
+			
+
+			
+
+			
+
+			
+				
+				<h3 id="NewPerCgroupStatMetrics">func <a href="/target/cgroup_cpustat_linux.go?s=1910:1999#L88">NewPerCgroupStatMetrics</a></h3>
+				<pre>func NewPerCgroupStatMetrics(m *<a href="/pkg/github.com/square/prodeng/metrics/">metrics</a>.<a href="/pkg/github.com/square/prodeng/metrics/#MetricContext">MetricContext</a>, path <a href="/pkg/builtin/#string">string</a>) *<a href="#PerCgroupStatMetrics">PerCgroupStatMetrics</a></pre>
+				
+				
+			
+
+			
+				
+				<h3 id="PerCgroupStatMetrics.Collect">func (*PerCgroupStatMetrics) <a href="/target/cgroup_cpustat_linux.go?s=2121:2161#L98">Collect</a></h3>
+				<pre>func (s *<a href="#PerCgroupStatMetrics">PerCgroupStatMetrics</a>) Collect()</pre>
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
