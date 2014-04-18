@@ -84,7 +84,7 @@ func (s *PerCgroupStat) Free() float64 {
 // Usage returns physical memory in use; not including buffers/cached/sreclaimable
 func (s *PerCgroupStat) Usage() float64 {
 	o := s.Metrics
-	return o.Rss.V + o.Unevictable.V
+	return o.Rss.V + o.Mapped_file.V
 }
 
 // SoftLimit returns soft-limit for the cgroup
