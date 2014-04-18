@@ -75,7 +75,7 @@ func main() {
 		fmt.Printf(
 			"total: cpu: %3.1f%%, mem: %3.1f%% (%s/%s)\n",
 			cstat.Usage(), (mstat.Usage()/mstat.Total())*100,
-			ByteSize(cstat.Usage()), ByteSize(mstat.Total()))
+			ByteSize(mstat.Usage()), ByteSize(mstat.Total()))
 
 		// so much for printing cpu/mem stats for cgroup together
 		for name, mem := range cg_mem.Cgroups {
@@ -103,8 +103,8 @@ func main() {
 			out = fmt.Sprintf("cgroup:%s ",name)
 			if s.cpu != nil {
 				out += fmt.Sprintf(
-				"cpu: %3.1f%% (%.1f/%d) ",
-				 s.cpu.Usage(), s.cpu.Quota(),
+				"cpu_throttling: %3.1f%% (%.1f/%d) ",
+				 s.cpu.Throttle(), s.cpu.Quota(),
 				(len(cstat.CPUS()) - 1))
 			}
 			if s.mem != nil {

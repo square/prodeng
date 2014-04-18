@@ -70,15 +70,16 @@ func NewPerCgroupStat(m *metrics.MetricContext, path string) *PerCgroupStat {
 	return c
 }
 
-// Usage returns CPU used as percentage of quota
+// Throttle returns as percentage of time that
+// the cgroup couldn't get enough cpu
 // rate ((nr_throttled * period) / quota)
 // XXX: add support for real-time scheduler stats
 
-func (s *PerCgroupStat) Usage() float64 {
+func (s *PerCgroupStat) Throttle() float64 {
 	o := s.Metrics
-	periods_used_sec := o.Nr_periods.CurRate()
+	throttled_sec := o.Throttled_time.CurRate()
 
-	return (periods_used_sec * (o.Cfs_period_us.V / o.Cfs_quota_us.V)) * 100
+	return (throttled_sec/(1*1000*1000*1000))*100
 }
 
 // Quota returns how many logical CPUs can be used
