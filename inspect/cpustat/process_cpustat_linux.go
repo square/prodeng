@@ -13,70 +13,44 @@ import (
 	"io/ioutil"
 	"path"
 	"path/filepath"
-	"container/heap"
 	"github.com/square/prodeng/inspect/misc"
 	"github.com/square/prodeng/metrics"
 )
 
-// a heap to store top-N processes stats
-type ProcessesHeap []*PerProcessStat
-
-func (h ProcessesHeap) Len() int          { return len(h) }
-func (h ProcessesHeap) Less(i,j int) bool { return h[i].Usage() < h[j].Usage() }
-func (h ProcessesHeap) Swap(i,j int)      { h[i], h[j] = h[j], h[i] }
-
-func (h *ProcessesHeap) Push(x interface{}) {
-	*h = append(*h, x.(*PerProcessStat))
-}
-
-func (h *ProcessesHeap) Pop() interface{} {
-	old := *h
-	n := len(old)
-	x := old[n-1]
-	*h = old[0 : n-1]
-	return x
-}
-
-func (h *ProcessesHeap) Print() {
-	for _,x := range *h {
-		fmt.Printf("Top process: %s(%f) \n", x.Metrics.Cmdline,x.Usage())
-	}
-}
-
-
 type ProcessStat struct {
 	Mountpoint   string
 	m            *metrics.MetricContext
-	Processes    *ProcessesHeap
-	n            int
+	Processes    map[string]*PerProcessStat
 }
 
 // NewProcessStat allocates a new ProcessStat object
 // Arguments:
 // m - *metricContext
-// n - int (number of process to track)
 
-func NewProcessStat(m *metrics.MetricContext,n int) *ProcessStat {
+func NewProcessStat(m *metrics.MetricContext) *ProcessStat {
 	c := new(ProcessStat)
 	c.m = m
-	c.n = n
 
-	c.Processes = new(ProcessesHeap)
-	heap.Init(c.Processes)
-
+	c.Processes = make(map[string]*PerProcessStat,1024)
 
 	ticker := time.NewTicker(m.Step)
 	go func() {
 		for _ = range ticker.C {
-		 c.Processes = new(ProcessesHeap)
-	         heap.Init(c.Processes)
 			c.Collect()
-			c.Processes.Print()
+			c.Print()
 		}
 	}()
 
 	return c
 }
+
+func (c *ProcessStat) Print() {
+	fmt.Println(c.Processes)
+	for _,o := range c.Processes {
+		fmt.Println("pid ",o.Usage(),o.Metrics.Cmdline)
+	}
+}
+
 
 // Collect walks through /proc and updates stats
 // Collect is usually called internally based on
@@ -89,28 +63,13 @@ func (c *ProcessStat) Collect() {
 		"/proc",
 		func(p string, f os.FileInfo, _ error) error {
 			if f.IsDir() && p != "/proc" {
-				//m := metrics.NewMetricContext("tmp",time.Millisecond*5,2)
-				pidstat := NewPerProcessStat(c.m,path.Base(p))
+				p := path.Base(p)
+				pidstat,ok := h[p]
+				if !ok {
+					pidstat = NewPerProcessStat(c.m,path.Base(p))
+					h[p] = pidstat
+				}
 				pidstat.Metrics.Collect()
-				// lets sleep 1ms and collect stats and check 
-				// if they are worth tracking
-				// for now we only track top-N processes by
-				// CPU used (we use a heap)
-				//time.Sleep(time.Millisecond * 5)
-				pidstat.Metrics.Collect()
-				heap.Push(h,pidstat)
-
-/*
-				if h.Len() < c.n {
-					heap.Push(h,pidstat)
-				} else {
-					x := heap.Pop(h).(*PerProcessStat)
-					if pidstat.Usage()  > x.Usage() {
-						heap.Push(h,pidstat)
-					} else {
-						heap.Push(h,x)
-					}
-				} */
 				return filepath.SkipDir
 			}
 			return nil
