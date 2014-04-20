@@ -8,7 +8,13 @@ import (
 	"path/filepath"
 	"github.com/square/prodeng/inspect/cpustat"
 	"github.com/square/prodeng/inspect/memstat"
+	"github.com/square/prodeng/inspect/pidstat"
 	"github.com/square/prodeng/metrics"
+	"runtime/pprof"
+	"flag"
+	"os"
+	"log"
+
 )
 
 type ByteSize float64
@@ -47,12 +53,24 @@ func (b ByteSize) String() string {
 	return fmt.Sprintf("%.2fB", b)
 }
 
+	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 // XXX: make it OS agnostic
 func main() {
+	 flag.Parse()
+	     if *cpuprofile != "" {
+	             f, err := os.Create(*cpuprofile)
+	             if err != nil {
+	                 log.Fatal(err)
+	         }
+	        pprof.StartCPUProfile(f)
+	        defer pprof.StopCPUProfile()
+	 }
+
+	fmt.Println("Gathering statistics......")
 
 	// Initialize a metric context with step 1 second and maximum
 	// history of 3 samples
-	m := metrics.NewMetricContext("system", time.Millisecond*1000, 3)
+	m := metrics.NewMetricContext("system", time.Millisecond*1000*1, 3)
 
 	// Collect cpu/memory metrics
 	cstat := cpustat.New(m)
@@ -60,6 +78,9 @@ func main() {
 
 	cg_mem := memstat.NewCgroupStat(m)
 	cg_cpu := cpustat.NewCgroupStat(m)
+
+	// per process stats
+	procs := pidstat.NewProcessStat(m)
 
 	type cg_stat struct {
 		cpu *cpustat.PerCgroupStat
@@ -69,12 +90,18 @@ func main() {
 	cg_stats := make(map[string]*cg_stat)
 
 	// Check metrics every 2s
-	ticker := time.NewTicker(time.Millisecond * 1000 * 2)
+	ticker := time.NewTicker(time.Millisecond * 1100 * 2)
+	var n int
 	for _ = range ticker.C {
+		if n > 30 {
+			return
+		}
+		n++
 		fmt.Println("--------------------------")
 		fmt.Printf(
 			"total: cpu: %3.1f%%, mem: %3.1f%% (%s/%s)\n",
 			cstat.Usage(), (mstat.Usage()/mstat.Total())*100,
+
 			ByteSize(mstat.Usage()), ByteSize(mstat.Total()))
 
 		// so much for printing cpu/mem stats for cgroup together
@@ -114,6 +141,35 @@ func main() {
 				ByteSize(s.mem.Usage()), ByteSize(s.mem.SoftLimit()))
 			}
 			fmt.Println(out)
+		}
+
+		// Top processes by usage
+		procs_by_usage := procs.ByCPUUsage()
+		fmt.Println("Top processes by CPU usage:")
+		n := 5
+		if len(procs_by_usage) < n {
+			n = len(procs_by_usage)
+		}
+
+
+		for i := 0; i < n; i++ {
+			fmt.Printf("usage: %3.1f, command: %s\n",
+				procs_by_usage[i].CPUUsage(),
+				procs_by_usage[i].Metrics.Comm)
+		}
+
+		fmt.Println("---")
+		procs_by_usage = procs.ByMemUsage()
+		fmt.Println("Top processes by Mem usage:")
+		n = 5
+		if len(procs_by_usage) < n {
+			n = len(procs_by_usage)
+		}
+
+		for i := 0; i < n; i++ {
+			fmt.Printf("usage: %s, command: %s\n",
+				ByteSize(procs_by_usage[i].MemUsage()),
+				procs_by_usage[i].Metrics.Comm)
 		}
 	}
 }
