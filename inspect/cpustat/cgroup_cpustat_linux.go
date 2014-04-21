@@ -12,8 +12,8 @@ import (
 )
 
 type CgroupStat struct {
-	Cgroups map[string]*PerCgroupStat
-	m       *metrics.MetricContext
+	Cgroups    map[string]*PerCgroupStat
+	m          *metrics.MetricContext
 	Mountpoint string
 }
 
@@ -79,7 +79,7 @@ func (s *PerCgroupStat) Throttle() float64 {
 	o := s.Metrics
 	throttled_sec := o.Throttled_time.CurRate()
 
-	return (throttled_sec/(1*1000*1000*1000))*100
+	return (throttled_sec / (1 * 1000 * 1000 * 1000)) * 100
 }
 
 // Quota returns how many logical CPUs can be used

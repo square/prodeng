@@ -8,16 +8,16 @@ import (
 	"os"
 	// "math/rand"
 	//"regexp"
-	"time"
-	"syscall"
-	"strings"
-	"io/ioutil"
-	"math"
-	"sort"
-	"path"
-	"path/filepath"
 	"github.com/square/prodeng/inspect/misc"
 	"github.com/square/prodeng/metrics"
+	"io/ioutil"
+	"math"
+	"path"
+	"path/filepath"
+	"sort"
+	"strings"
+	"syscall"
+	"time"
 )
 
 /*
@@ -27,10 +27,10 @@ import (
 import "C"
 
 type ProcessStat struct {
-	Mountpoint   string
-	m            *metrics.MetricContext
-	Processes    map[string]*PerProcessStat
-	collectAttributes      bool
+	Mountpoint        string
+	m                 *metrics.MetricContext
+	Processes         map[string]*PerProcessStat
+	collectAttributes bool
 }
 
 // NewProcessStat allocates a new ProcessStat object
@@ -48,7 +48,7 @@ func NewProcessStat(m *metrics.MetricContext) *ProcessStat {
 	c := new(ProcessStat)
 	c.m = m
 
-	c.Processes = make(map[string]*PerProcessStat,4096)
+	c.Processes = make(map[string]*PerProcessStat, 4096)
 
 	var n int
 	ticker := time.NewTicker(m.Step)
@@ -60,7 +60,7 @@ func NewProcessStat(m *metrics.MetricContext) *ProcessStat {
 			if n < 2 {
 				c.collectAttributes = true
 				c.Collect()
-			} else if p < 1 || n % p == 0 {
+			} else if p < 1 || n%p == 0 {
 				c.collectAttributes = false
 				c.Collect()
 			}
@@ -71,21 +71,20 @@ func NewProcessStat(m *metrics.MetricContext) *ProcessStat {
 	return c
 }
 
-
 // ByCPUUsage implements sort.Interface for []*PerProcessStat based on
 // the Usage() method
 
 type ByCPUUsage []*PerProcessStat
 
-func (a ByCPUUsage) Len() int             { return len(a) }
-func (a ByCPUUsage) Swap(i,j int)         { a[i],a[j] = a[j],a[i] }
-func (a ByCPUUsage) Less(i,j int)  bool   { return a[i].CPUUsage() > a[j].CPUUsage() }
+func (a ByCPUUsage) Len() int           { return len(a) }
+func (a ByCPUUsage) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByCPUUsage) Less(i, j int) bool { return a[i].CPUUsage() > a[j].CPUUsage() }
 
 func (c *ProcessStat) ByCPUUsage() []*PerProcessStat {
-	v := make([]*PerProcessStat,0)
-	for _,o := range c.Processes {
-		if ! math.IsNaN(o.CPUUsage()) {
-			v = append(v,o)
+	v := make([]*PerProcessStat, 0)
+	for _, o := range c.Processes {
+		if !math.IsNaN(o.CPUUsage()) {
+			v = append(v, o)
 		}
 	}
 	sort.Sort(ByCPUUsage(v))
@@ -94,16 +93,15 @@ func (c *ProcessStat) ByCPUUsage() []*PerProcessStat {
 
 type ByMemUsage []*PerProcessStat
 
-func (a ByMemUsage) Len() int             { return len(a) }
-func (a ByMemUsage) Swap(i,j int)         { a[i],a[j] = a[j],a[i] }
-func (a ByMemUsage) Less(i,j int)  bool   { return a[i].MemUsage() > a[j].MemUsage() }
-
+func (a ByMemUsage) Len() int           { return len(a) }
+func (a ByMemUsage) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByMemUsage) Less(i, j int) bool { return a[i].MemUsage() > a[j].MemUsage() }
 
 func (c *ProcessStat) ByMemUsage() []*PerProcessStat {
-	v := make([]*PerProcessStat,0)
-	for _,o := range c.Processes {
-		if ! math.IsNaN(o.MemUsage()) {
-			v = append(v,o)
+	v := make([]*PerProcessStat, 0)
+	for _, o := range c.Processes {
+		if !math.IsNaN(o.MemUsage()) {
+			v = append(v, o)
 		}
 	}
 	sort.Sort(ByMemUsage(v))
@@ -112,10 +110,7 @@ func (c *ProcessStat) ByMemUsage() []*PerProcessStat {
 
 func (c *ProcessStat) ByCgroup() {
 
-
-
 }
-
 
 // Collect walks through /proc and updates stats
 // Collect is usually called internally based on
@@ -124,7 +119,7 @@ func (c *ProcessStat) ByCgroup() {
 
 func (c *ProcessStat) Collect() {
 	h := c.Processes
-	for _,v := range h {
+	for _, v := range h {
 		v.Metrics.dead = true
 	}
 
@@ -136,9 +131,9 @@ func (c *ProcessStat) Collect() {
 			}
 			if f.IsDir() && p != "/proc" {
 				p := path.Base(p)
-				pidstat,ok := h[p]
+				pidstat, ok := h[p]
 				if !ok {
-					pidstat = NewPerProcessStat(c.m,path.Base(p))
+					pidstat = NewPerProcessStat(c.m, path.Base(p))
 					h[p] = pidstat
 				}
 				if c.collectAttributes {
@@ -157,17 +152,17 @@ func (c *ProcessStat) Collect() {
 		})
 
 	// remove dead processes
-	for k,v := range h {
+	for k, v := range h {
 		if v.Metrics.dead {
-			delete(h,k)
+			delete(h, k)
 		}
 	}
 }
 
 // Per Process functions
 type PerProcessStat struct {
-	Metrics *PerProcessStatMetrics
-	m       *metrics.MetricContext
+	Metrics  *PerProcessStatMetrics
+	m        *metrics.MetricContext
 	pagesize int64
 }
 
@@ -192,23 +187,21 @@ func (s *PerProcessStat) MemUsage() float64 {
 	return o.Rss.V * float64(s.pagesize)
 }
 
-
-
 type PerProcessStatMetrics struct {
-	Pid           string
-	Comm          string
-	Cmdline       string
-	Cgroup        *map[string]string
-	Uid           uint32
-	Gid           uint32
-	Majflt	      *metrics.Counter
-	Utime	      *metrics.Counter
-	Stime         *metrics.Counter
-	UpdatedAt     *metrics.Counter
-	StartedAt    int64
-	Rss           *metrics.Gauge
-	pid           string
-	dead          bool
+	Pid       string
+	Comm      string
+	Cmdline   string
+	Cgroup    *map[string]string
+	Uid       uint32
+	Gid       uint32
+	Majflt    *metrics.Counter
+	Utime     *metrics.Counter
+	Stime     *metrics.Counter
+	UpdatedAt *metrics.Counter
+	StartedAt int64
+	Rss       *metrics.Gauge
+	pid       string
+	dead      bool
 }
 
 func NewPerProcessStatMetrics(m *metrics.MetricContext, pid string) *PerProcessStatMetrics {
@@ -232,14 +225,14 @@ func (s *PerProcessStatMetrics) Collect() {
 	}
 
 	now := time.Now().UnixNano()
-	if now - s.StartedAt < 0 {
+	if now-s.StartedAt < 0 {
 		return
 	}
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		f := strings.Split(scanner.Text()," ")
-		s.Pid  =  f[0]
+		f := strings.Split(scanner.Text(), " ")
+		s.Pid = f[0]
 		s.Comm = f[1]
 		s.Majflt.Set(misc.ParseUint(f[11]))
 		s.Utime.Set(misc.ParseUint(f[13]))
@@ -256,14 +249,14 @@ func (s *PerProcessStatMetrics) CollectAttributes() {
 		s.Cmdline = string(content)
 	}
 
-	file,err := os.Open("/proc/" + s.pid + "/cgroup")
+	file, err := os.Open("/proc/" + s.pid + "/cgroup")
 	defer file.Close()
 
 	if err == nil {
 		t := make(map[string]string)
 		scanner := bufio.NewScanner(file)
 		for scanner.Scan() {
-			f := strings.Split(scanner.Text(),":")
+			f := strings.Split(scanner.Text(), ":")
 			t[f[1]] = f[2]
 		}
 		s.Cgroup = &t

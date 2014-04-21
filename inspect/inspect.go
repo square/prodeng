@@ -3,18 +3,17 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"time"
-	"path/filepath"
 	"github.com/square/prodeng/inspect/cpustat"
 	"github.com/square/prodeng/inspect/memstat"
 	"github.com/square/prodeng/inspect/pidstat"
 	"github.com/square/prodeng/metrics"
-	"runtime/pprof"
-	"flag"
-	"os"
 	"log"
-
+	"os"
+	"path/filepath"
+	"runtime/pprof"
+	"time"
 )
 
 type ByteSize float64
@@ -53,18 +52,19 @@ func (b ByteSize) String() string {
 	return fmt.Sprintf("%.2fB", b)
 }
 
-	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+
 // XXX: make it OS agnostic
 func main() {
-	 flag.Parse()
-	     if *cpuprofile != "" {
-	             f, err := os.Create(*cpuprofile)
-	             if err != nil {
-	                 log.Fatal(err)
-	         }
-	        pprof.StartCPUProfile(f)
-	        defer pprof.StopCPUProfile()
-	 }
+	flag.Parse()
+	if *cpuprofile != "" {
+		f, err := os.Create(*cpuprofile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	fmt.Println("Gathering statistics......")
 
@@ -106,8 +106,8 @@ func main() {
 
 		// so much for printing cpu/mem stats for cgroup together
 		for name, mem := range cg_mem.Cgroups {
-			name,_ = filepath.Rel(cg_mem.Mountpoint,name)
-			_,ok := cg_stats[name]
+			name, _ = filepath.Rel(cg_mem.Mountpoint, name)
+			_, ok := cg_stats[name]
 			if !ok {
 				cg_stats[name] = new(cg_stat)
 			}
@@ -115,30 +115,29 @@ func main() {
 		}
 
 		for name, cpu := range cg_cpu.Cgroups {
-			name,_ = filepath.Rel(cg_cpu.Mountpoint,name)
-			_,ok := cg_stats[name]
+			name, _ = filepath.Rel(cg_cpu.Mountpoint, name)
+			_, ok := cg_stats[name]
 			if !ok {
 				cg_stats[name] = new(cg_stat)
 			}
 			cg_stats[name].cpu = cpu
 		}
 
-
-		for name,s := range cg_stats {
+		for name, s := range cg_stats {
 			var out string
 
-			out = fmt.Sprintf("cgroup:%s ",name)
+			out = fmt.Sprintf("cgroup:%s ", name)
 			if s.cpu != nil {
 				out += fmt.Sprintf(
-				"cpu_throttling: %3.1f%% (%.1f/%d) ",
-				 s.cpu.Throttle(), s.cpu.Quota(),
-				(len(cstat.CPUS()) - 1))
+					"cpu_throttling: %3.1f%% (%.1f/%d) ",
+					s.cpu.Throttle(), s.cpu.Quota(),
+					(len(cstat.CPUS()) - 1))
 			}
 			if s.mem != nil {
 				out += fmt.Sprintf(
-				"mem: %3.1f%% (%s/%s) ",
-				(s.mem.Usage()/s.mem.SoftLimit())*100,
-				ByteSize(s.mem.Usage()), ByteSize(s.mem.SoftLimit()))
+					"mem: %3.1f%% (%s/%s) ",
+					(s.mem.Usage()/s.mem.SoftLimit())*100,
+					ByteSize(s.mem.Usage()), ByteSize(s.mem.SoftLimit()))
 			}
 			fmt.Println(out)
 		}
@@ -150,7 +149,6 @@ func main() {
 		if len(procs_by_usage) < n {
 			n = len(procs_by_usage)
 		}
-
 
 		for i := 0; i < n; i++ {
 			fmt.Printf("usage: %3.1f, command: %s\n",

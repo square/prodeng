@@ -16,8 +16,8 @@ import (
 )
 
 type CgroupStat struct {
-	Cgroups map[string]*PerCgroupStat
-	m       *metrics.MetricContext
+	Cgroups    map[string]*PerCgroupStat
+	m          *metrics.MetricContext
 	Mountpoint string
 }
 
