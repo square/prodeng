@@ -5,18 +5,19 @@ package main
 import (
 	"flag"
 	"fmt"
+	"os"
+	"path/filepath"
+	"runtime/pprof"
+	"time"
+	"log"
 	"github.com/square/prodeng/inspect/cpustat"
 	"github.com/square/prodeng/inspect/diskstat"
 	"github.com/square/prodeng/inspect/memstat"
 	"github.com/square/prodeng/inspect/pidstat"
 	"github.com/square/prodeng/metrics"
-	"log"
-	"os"
-	"path/filepath"
-	"runtime/pprof"
-	"time"
 )
 
+// TODO: move this to misc package
 type ByteSize float64
 
 const (
@@ -53,11 +54,17 @@ func (b ByteSize) String() string {
 	return fmt.Sprintf("%.2fB", b)
 }
 
-var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
 
 // XXX: make it OS agnostic
 func main() {
+	// options
+	var batchmode bool
+	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
+	flag.BoolVar(&batchmode,"-b",false,"Run in batch mode; suitable for parsing")
+	flag.BoolVar(&batchmode,"-batchmode",false,"Run in batch mode; suitable for parsing")
 	flag.Parse()
+
+	// Enable Profiling 
 	if *cpuprofile != "" {
 		f, err := os.Create(*cpuprofile)
 		if err != nil {
@@ -93,12 +100,11 @@ func main() {
 
 	// Check metrics every 2s
 	ticker := time.NewTicker(time.Millisecond * 1100 * 2)
-	var n int
 	for _ = range ticker.C {
-		if n > 30 {
-			return
+		if !batchmode {
+			fmt.Printf("\033[2J") // clear screen
+			fmt.Printf("\033[H")  // move cursor top left top
 		}
-		n++
 		fmt.Println("--------------------------")
 		fmt.Printf(
 			"total: cpu: %3.1f%%, mem: %3.1f%% (%s/%s)\n",
