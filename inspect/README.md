@@ -21,11 +21,17 @@ examples:
   * CPU spike at 14:00 UTC. Top users: A, B
 
 
-For now it just dumps metrics like top,iostat,
+For now it just dumps metrics like top,iostat
+
+###### Installation
+
+1. Get go
+2. go get -v -u github.com/square/prodeng/inspect # fetches packages and builds
+
 
 ###### Usage
 
-./inspect
+./bin/inspect
 
 ```
 --------------------------
