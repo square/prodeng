@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/square/prodeng/inspect/cpustat"
+	"github.com/square/prodeng/inspect/diskstat"
 	"github.com/square/prodeng/inspect/memstat"
 	"github.com/square/prodeng/inspect/pidstat"
 	"github.com/square/prodeng/metrics"
@@ -72,9 +73,10 @@ func main() {
 	// history of 3 samples
 	m := metrics.NewMetricContext("system", time.Millisecond*1000*1, 3)
 
-	// Collect cpu/memory metrics
+	// Collect cpu/memory/disk metrics
 	cstat := cpustat.New(m)
 	mstat := memstat.New(m)
+	dstat := diskstat.New(m)
 
 	cg_mem := memstat.NewCgroupStat(m)
 	cg_cpu := cpustat.NewCgroupStat(m)
@@ -101,8 +103,11 @@ func main() {
 		fmt.Printf(
 			"total: cpu: %3.1f%%, mem: %3.1f%% (%s/%s)\n",
 			cstat.Usage(), (mstat.Usage()/mstat.Total())*100,
-
 			ByteSize(mstat.Usage()), ByteSize(mstat.Total()))
+
+		for d,o := range dstat.Disks {
+			fmt.Printf("disk: %s usage: %f\n", d, o.Usage())
+		}
 
 		// so much for printing cpu/mem stats for cgroup together
 		for name, mem := range cg_mem.Cgroups {
