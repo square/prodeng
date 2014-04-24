@@ -28,6 +28,11 @@ For now it just dumps metrics like top,iostat
 1. Get go
 2. go get -v -u github.com/square/prodeng/inspect # fetches packages and builds
 
+###### Documentation (WIP)
+
+http://godoc.org/github.com/square/prodeng/inspect
+http://godoc.org/github.com/square/prodeng/metrics
+
 
 ###### Usage
 
