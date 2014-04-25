@@ -5,6 +5,7 @@ package misc
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"github.com/square/prodeng/metrics"
 	"io/ioutil"
 	"os"
@@ -98,4 +99,76 @@ func FindCgroups(mountpoint string) ([]string, error) {
 		})
 
 	return cgroups, nil
+}
+
+type ByteSize float64
+
+const (
+	_           = iota
+	KB ByteSize = 1 << (10 * iota)
+	MB
+	GB
+	TB
+	PB
+	EB
+	ZB
+	YB
+)
+
+func (b ByteSize) String() string {
+	switch {
+	case b >= YB:
+		return fmt.Sprintf("%.2fYB", b/YB)
+	case b >= ZB:
+		return fmt.Sprintf("%.2fZB", b/ZB)
+	case b >= EB:
+		return fmt.Sprintf("%.2fEB", b/EB)
+	case b >= PB:
+		return fmt.Sprintf("%.2fPB", b/PB)
+	case b >= TB:
+		return fmt.Sprintf("%.2fTB", b/TB)
+	case b >= GB:
+		return fmt.Sprintf("%.2fGB", b/GB)
+	case b >= MB:
+		return fmt.Sprintf("%.2fMB", b/MB)
+	case b >= KB:
+		return fmt.Sprintf("%.2fKB", b/KB)
+	}
+	return fmt.Sprintf("%.2fB", b)
+}
+
+type BitSize float64
+
+const (
+	_          = iota
+	Kb BitSize = 1 << (10 * iota)
+	Mb
+	Gb
+	Tb
+	Pb
+	Eb
+	Zb
+	Yb
+)
+
+func (b BitSize) String() string {
+	switch {
+	case b >= Yb:
+		return fmt.Sprintf("%.2fYb", b/Yb)
+	case b >= Zb:
+		return fmt.Sprintf("%.2fZb", b/Zb)
+	case b >= Eb:
+		return fmt.Sprintf("%.2fEb", b/Eb)
+	case b >= Pb:
+		return fmt.Sprintf("%.2fPb", b/Pb)
+	case b >= Tb:
+		return fmt.Sprintf("%.2fTb", b/Tb)
+	case b >= Gb:
+		return fmt.Sprintf("%.2fGb", b/Gb)
+	case b >= Mb:
+		return fmt.Sprintf("%.2fMb", b/Mb)
+	case b >= Kb:
+		return fmt.Sprintf("%.2fKb", b/Kb)
+	}
+	return fmt.Sprintf("%.2fb", b)
 }

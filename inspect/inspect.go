@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"github.com/square/prodeng/inspect/cpustat"
 	"github.com/square/prodeng/inspect/diskstat"
+	"github.com/square/prodeng/inspect/interfacestat"
 	"github.com/square/prodeng/inspect/memstat"
+	"github.com/square/prodeng/inspect/misc"
 	"github.com/square/prodeng/inspect/pidstat"
 	"github.com/square/prodeng/metrics"
 	"log"
@@ -16,43 +18,6 @@ import (
 	"runtime/pprof"
 	"time"
 )
-
-// TODO: move this to misc package
-type ByteSize float64
-
-const (
-	_           = iota
-	KB ByteSize = 1 << (10 * iota)
-	MB
-	GB
-	TB
-	PB
-	EB
-	ZB
-	YB
-)
-
-func (b ByteSize) String() string {
-	switch {
-	case b >= YB:
-		return fmt.Sprintf("%.2fYB", b/YB)
-	case b >= ZB:
-		return fmt.Sprintf("%.2fZB", b/ZB)
-	case b >= EB:
-		return fmt.Sprintf("%.2fEB", b/EB)
-	case b >= PB:
-		return fmt.Sprintf("%.2fPB", b/PB)
-	case b >= TB:
-		return fmt.Sprintf("%.2fTB", b/TB)
-	case b >= GB:
-		return fmt.Sprintf("%.2fGB", b/GB)
-	case b >= MB:
-		return fmt.Sprintf("%.2fMB", b/MB)
-	case b >= KB:
-		return fmt.Sprintf("%.2fKB", b/KB)
-	}
-	return fmt.Sprintf("%.2fB", b)
-}
 
 // XXX: make it OS agnostic
 func main() {
@@ -79,10 +44,11 @@ func main() {
 	// history of 3 samples
 	m := metrics.NewMetricContext("system", time.Millisecond*1000*1, 3)
 
-	// Collect cpu/memory/disk metrics
+	// Collect cpu/memory/disk/interface metrics
 	cstat := cpustat.New(m)
 	mstat := memstat.New(m)
 	dstat := diskstat.New(m)
+	ifstat := interfacestat.New(m)
 
 	cg_mem := memstat.NewCgroupStat(m)
 	cg_cpu := cpustat.NewCgroupStat(m)
@@ -108,10 +74,16 @@ func main() {
 		fmt.Printf(
 			"total: cpu: %3.1f%%, mem: %3.1f%% (%s/%s)\n",
 			cstat.Usage(), (mstat.Usage()/mstat.Total())*100,
-			ByteSize(mstat.Usage()), ByteSize(mstat.Total()))
+			misc.ByteSize(mstat.Usage()), misc.ByteSize(mstat.Total()))
 
 		for d, o := range dstat.Disks {
 			fmt.Printf("disk: %s usage: %f\n", d, o.Usage())
+		}
+
+		for iface, o := range ifstat.Interfaces {
+			fmt.Printf("iface: %s TX: %s/s, RX: %s/s\n", iface,
+				misc.BitSize(o.TXBandwidth()),
+				misc.BitSize(o.RXBandwidth()))
 		}
 
 		// so much for printing cpu/mem stats for cgroup together
@@ -147,7 +119,7 @@ func main() {
 				out += fmt.Sprintf(
 					"mem: %3.1f%% (%s/%s) ",
 					(s.mem.Usage()/s.mem.SoftLimit())*100,
-					ByteSize(s.mem.Usage()), ByteSize(s.mem.SoftLimit()))
+					misc.ByteSize(s.mem.Usage()), misc.ByteSize(s.mem.SoftLimit()))
 			}
 			fmt.Println(out)
 		}
@@ -176,7 +148,7 @@ func main() {
 
 		for i := 0; i < n; i++ {
 			fmt.Printf("usage: %s, command: %s\n",
-				ByteSize(procs_by_usage[i].MemUsage()),
+				misc.ByteSize(procs_by_usage[i].MemUsage()),
 				procs_by_usage[i].Metrics.Comm)
 		}
 	}
