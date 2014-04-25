@@ -19,3 +19,25 @@ func TestCounterRate(t *testing.T) {
 		t.Errorf("c.CurRate() = %v, want %v", out,want)
 	}
 }
+
+func TestDefaultGaugeVal(t *testing.T) {
+	m := NewMetricContext("testing",time.Millisecond * 1,1)
+	c := m.NewGauge("stuff")
+	if !math.IsNaN(c.V) {
+		t.Errorf("c.V = %v, want %v", c.V,math.NaN())
+	}
+}
+func TestGaugePercentile(t *testing.T) {
+	m := NewMetricContext("testing",time.Millisecond * 1,1)
+	c := m.NewGauge("stuff")
+	if !math.IsNaN(c.V) {
+		t.Errorf("c.V = %v, want %v", c.V,math.NaN())
+	}
+}
+func TestDefaultCounterVal(t *testing.T) {
+	m := NewMetricContext("testing",time.Millisecond * 1,1)
+	c := m.NewCounter("stuff")
+	if c.V != 0 {
+		t.Errorf("c.V = %v, want %v", c.V,0)
+	}
+}
