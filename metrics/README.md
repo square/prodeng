@@ -22,7 +22,7 @@ c.V // get Value
 
 By design, no locks are held when updating metrics.
 
-######## TODO
+###### TODO
 
 1. Cleanup API - there are bunch of inconsistencies.
 2. Add support for basic statistics that are cheap to
