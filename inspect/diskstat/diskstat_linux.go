@@ -4,18 +4,18 @@ package diskstat
 
 import (
 	"bufio"
-	"io/ioutil"
 	"fmt"
-	"path"
 	"github.com/square/prodeng/inspect/misc"
 	"github.com/square/prodeng/metrics"
+	"io/ioutil"
 	"os"
+	"path"
 	"time"
 )
 
 type DiskStat struct {
-	Disks map[string]*PerDiskStat
-	m     *metrics.MetricContext
+	Disks   map[string]*PerDiskStat
+	m       *metrics.MetricContext
 	blkdevs map[string]bool
 }
 
@@ -39,9 +39,9 @@ func (s *DiskStat) RefreshBlkDevList() {
 	var blkdevs = make(map[string]bool)
 
 	// block devices
-	o,err := ioutil.ReadDir("/sys/block")
+	o, err := ioutil.ReadDir("/sys/block")
 	if err == nil {
-		for _,d := range o {
+		for _, d := range o {
 			blkdevs[path.Base(d.Name())] = true
 		}
 	}
