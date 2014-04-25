@@ -60,3 +60,27 @@ usage: 7.43MB, command: (zsh)
 usage: 7.38MB, command: (zsh)
 usage: 7.33MB, command: (zsh)
 ```
+
+###### Example API use 
+
+
+```go
+// collect CPU stats
+import "github.com/square/prodeng/inspect/cpustat"
+import "github.com/square/prodeng/metrics"
+
+// Initialize a metric context with step 1 second and maximum
+// history of 3 samples
+m := metrics.NewMetricContext("system", time.Millisecond*1000*1, 3)
+	
+// Collect CPU metrics every m.Step seconds
+cstat := cpustat.New(m)
+
+// Allow two samples to be collected. Since most metrics are counters.
+time.Sleep(time.Millisecond * 3)
+fmt.Println(cstat.Usage())
+
+```
+
+
+
