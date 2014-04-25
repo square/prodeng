@@ -77,7 +77,7 @@ func main() {
 			misc.ByteSize(mstat.Usage()), misc.ByteSize(mstat.Total()))
 
 		for d, o := range dstat.Disks {
-			fmt.Printf("disk: %s usage: %f\n", d, o.Usage())
+			fmt.Printf("disk: %s usage: %3.1f\n", d, o.Usage())
 		}
 
 		for iface, o := range ifstat.Interfaces {
