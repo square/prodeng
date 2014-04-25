@@ -41,24 +41,36 @@ http://godoc.org/github.com/square/prodeng/metrics
 
 ```
 --------------------------
-total: cpu: 10.2%, mem: 6.5% (248.16MB/3.74GB)
-disk: sr0 usage: NaN
-disk: sda usage: 0.000000
-disk: sdb usage: 0.000000
-cgroup:CG1 cpu_throttling: 18.1% (0.1/1) mem: 0.1% (316.00KB/409.60MB)
+total: cpu: 15.8%, mem: 1.6% (4.51GB/283.79GB)
+disk: sdd usage: 0.1
+disk: sdk usage: 0.1
+disk: sdo usage: 0.0
+disk: sdi usage: 0.1
+disk: sdj usage: 0.0
+disk: sda usage: 0.0
+disk: sdf usage: 0.0
+disk: sdc usage: 2.4
+disk: sdl usage: 0.0
+iface: lo TX: 4.23Mb/s, RX: 4.23Mb/s
+iface: em1 TX: 271.70Mb/s, RX: 116.27Mb/s
+iface: em2 TX: 0.00b/s, RX: 1.46Kb/s
+iface: em3 TX: NaNb/s, RX: NaNb/s
+iface: em4 TX: NaNb/s, RX: NaNb/s
+iface: bond0 TX: 271.70Mb/s, RX: 116.27Mb/s
+cgroup:app  cpu_throttling: 20% (1/24) mem: 0.0% (2.46GB/8.00GB)
 Top processes by CPU usage:
-usage: 10.1, command: (perl)
-usage: 1.0, command: (inspect)
-usage: 0.0, command: (zsh)
-usage: 0.0, command: (abrt-dump-oops)
-usage: 0.0, command: (zsh)
+usage: 394.7, command: (java)
+usage: 3.0, command: (inspect)
+usage: 1.0, command: (runner)
+usage: 0.0, command: (svlogd)
+usage: 0.0, command: (dsm_sa_datamgrd)
 ---
 Top processes by Mem usage:
-usage: 8.10MB, command: (zsh)
-usage: 7.67MB, command: (zsh)
-usage: 7.43MB, command: (zsh)
-usage: 7.38MB, command: (zsh)
-usage: 7.33MB, command: (zsh)
+usage: 2.46GB, command: (java)
+usage: 140.07MB, command: (dsm_sa_datamgrd)
+usage: 28.45MB, command: (server)
+usage: 28.40MB, command: (runner)
+usage: 18.12MB, command: (ruby20)
 ```
 
 ###### Example API use 
