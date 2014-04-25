@@ -3,7 +3,7 @@
 inspect is a collection of libraries for gathering
 system metrics.
 
-inspect command line is an utility that gives a
+inspect command line is a utility that gives a
 brief overview on current state of system resource
 usage.
 
