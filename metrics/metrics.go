@@ -21,7 +21,6 @@ type MetricContext struct {
 type Counter struct {
 	V          uint64
 	K          string
-	TrackStats bool
 	Step       time.Duration
 	Nsamples   int
 	// Fixed buffer and a marker for tracking statistics
@@ -32,7 +31,6 @@ type Counter struct {
 type Gauge struct {
 	V          float64
 	K          string
-	TrackStats bool
 	Step       time.Duration
 	Nsamples   int
 	// Fixed buffer and a marker for tracking statistics
@@ -40,12 +38,15 @@ type Gauge struct {
 	history []float64
 }
 
+// Creates a new metric context. A metric context specifies a namespace
+// time duration that is used as step and number of samples to keep
+// in-memory
+
 func NewMetricContext(namespace string, Step time.Duration, Nsamples int) *MetricContext {
 	m := new(MetricContext)
 	m.namespace = namespace
 	m.Step = Step
 	m.Nsamples = Nsamples
-	m.TrackStats = false
 	m.Counters = make(map[string]*Counter)
 	m.Gauges = make(map[string]*Gauge)
 	return m
@@ -78,44 +79,46 @@ func (m *MetricContext) UpdateStats() {
 func (m *MetricContext) NewCounter(name string) *Counter {
 	c := new(Counter)
 	c.K = name
-	c.TrackStats = m.TrackStats
 	c.Nsamples = m.Nsamples
+	// We need atleast two samples for rate calcuation
+	if c.Nsamples < 2 {
+		c.Nsamples = 2
+	}
+	c.history = make([]uint64, c.Nsamples) // 0 is a-ok as not updated value
 	c.Step = m.Step
-	c.SetupTracking()
 	m.Counters[name] = c
 	return c
 }
 
-func (c *Counter) SetupTracking() {
-	if !c.TrackStats {
-		c.TrackStats = true
-		c.history = make([]uint64, c.Nsamples) // 0 is a-ok as not updated value
-	}
-	return
-}
-
+// Set Counter Value. This is useful if you are reading a metric
+// that is already a counter
+// Note: calls UpdateStats()
 func (c *Counter) Set(v uint64) {
 	c.V = v
 	c.UpdateStats()
 }
 
+// Increment the counter value
+// Note: UpdateStats() is not called
 func (c *Counter) Inc() {
 	c.V++
 }
 
+// Store current value in history
+// This function or Set needs to be called atleast twice for
+// rate calculation
 func (c *Counter) UpdateStats() {
-	if c.TrackStats {
-		// Store current value in history
-		c.history[c.idx] = c.V
-		c.idx++
-		if c.idx == c.Nsamples {
-			c.idx = 0
-		}
+	// Store current value in history
+	c.history[c.idx] = c.V
+	c.idx++
+	if c.idx == c.Nsamples {
+		c.idx = 0
 	}
 }
 
+// CurRate() calculates change of value over time as indicated
+// step.
 // XXX: add detection for counter wrap / counter reset
-// calculate rate of change per second
 func (c *Counter) CurRate() float64 {
 	var a_idx, b_idx int
 	var a, b uint64
@@ -145,43 +148,33 @@ func (c *Counter) CurRate() float64 {
 }
 
 // Gauges
-
+// NewGauge initializes a Gauge and returns it
 func (m *MetricContext) NewGauge(name string) *Gauge {
 	g := new(Gauge)
 	g.K = name
 	g.V = math.NaN()
 	g.Nsamples = m.Nsamples
-	g.TrackStats = m.TrackStats
-	g.SetupTracking()
+	g.history = make([]float64, g.Nsamples)
+	for i, _ := range g.history {
+		g.history[i] = math.NaN()
+	}
 	m.Gauges[name] = g
 	return g
 }
 
-func (g *Gauge) SetupTracking() {
-	if !g.TrackStats {
-		g.TrackStats = true
-		g.history = make([]float64, g.Nsamples)
-		for i, _ := range g.history {
-			g.history[i] = math.NaN()
-		}
-	}
-	return
-}
-
+// Set value of Gauge
 func (g *Gauge) Set(v float64) {
 	g.V = v
 }
 
+// UpdateStats() stores the current value in history
 func (g *Gauge) UpdateStats() {
-	if g.TrackStats {
-		// Store current value in history
-		g.history[g.idx] = g.V
-		g.idx = (g.idx + 1) % g.Nsamples
-	}
+	g.history[g.idx] = g.V
+	g.idx = (g.idx + 1) % g.Nsamples
 }
 
+// Percentile
 // should be in statistics package
-
 func (g *Gauge) Percentile(percentile float64) float64 {
 	// Nearest rank implementation
 	// http://en.wikipedia.org/wiki/Percentile
