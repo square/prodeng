@@ -133,10 +133,11 @@ func main() {
 		}
 
 		for i := 0; i < n; i++ {
-			fmt.Printf("usage: %3.1f  command: %s user: %s\n",
+			fmt.Printf("usage: %3.1f  command: %s user: %s pid: %v\n",
 				procs_by_usage[i].CPUUsage(),
 				procs_by_usage[i].Metrics.Comm,
-				procs_by_usage[i].Metrics.User)
+				procs_by_usage[i].Metrics.User,
+				procs_by_usage[i].Metrics.Pid)
 		}
 
 		fmt.Println("---")
@@ -148,10 +149,11 @@ func main() {
 		}
 
 		for i := 0; i < n; i++ {
-			fmt.Printf("usage: %s, command: %s user: %s\n",
+			fmt.Printf("usage: %s, command: %s user: %s pid: %v\n",
 				misc.ByteSize(procs_by_usage[i].MemUsage()),
 				procs_by_usage[i].Metrics.Comm,
-				procs_by_usage[i].Metrics.User)
+				procs_by_usage[i].Metrics.User,
+				procs_by_usage[i].Metrics.Pid)
 		}
 	}
 }
