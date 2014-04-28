@@ -3,7 +3,6 @@
 package pidstat
 
 import (
-	//"fmt"
 	"bufio"
 	"os"
 	// "math/rand"
@@ -18,6 +17,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"os/user"
+	"fmt"
 )
 
 /*
@@ -141,6 +142,10 @@ func (c *ProcessStat) Collect() {
 					if st != nil {
 						pidstat.Metrics.Uid = st.(*syscall.Stat_t).Uid
 						pidstat.Metrics.Gid = st.(*syscall.Stat_t).Gid
+						u,err := user.LookupId(fmt.Sprintf("%v",st.(*syscall.Stat_t).Uid))
+						if err == nil {
+							pidstat.Metrics.User = u.Username
+						}
 					}
 					pidstat.Metrics.CollectAttributes()
 				}
@@ -187,6 +192,7 @@ func (s *PerProcessStat) MemUsage() float64 {
 	return o.Rss.V * float64(s.pagesize)
 }
 
+// XXX: move non metrics to PerProcessStat
 type PerProcessStatMetrics struct {
 	Pid       string
 	Comm      string
@@ -194,6 +200,7 @@ type PerProcessStatMetrics struct {
 	Cgroup    *map[string]string
 	Uid       uint32
 	Gid       uint32
+	User      string
 	Majflt    *metrics.Counter
 	Utime     *metrics.Counter
 	Stime     *metrics.Counter
