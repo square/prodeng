@@ -57,7 +57,7 @@ iface: em2 TX: 0.00b/s, RX: 1.46Kb/s
 iface: em3 TX: NaNb/s, RX: NaNb/s
 iface: em4 TX: NaNb/s, RX: NaNb/s
 iface: bond0 TX: 271.70Mb/s, RX: 116.27Mb/s
-cgroup:app  cpu_throttling: 20% (1/24) mem: 0.0% (2.46GB/8.00GB)
+cgroup:app  cpu: 20% cpu_throttling: 20% (1/24) mem: 0.0% (2.46GB/8.00GB)
 Top processes by CPU usage:
 usage: 394.7, command: (java)
 usage: 3.0, command: (inspect)
@@ -94,10 +94,16 @@ fmt.Println(cstat.Usage())
 
 ```
 
-####### Todo
+###### Todo
 
-Performance can be improved. PerProcessStat needs to have better heuristics
+  * Performance can be improved. PerProcessStat needs to have better heuristics
 to backoff when the number of processes is > 1024
+  * Add intelligence to find problems. Start with easy ones like CPU usage
+  * Command line utility needs much nicer formatting and options to dig into per process/cgroup details
+  * Add io metrics per process (need root priviliges)
+  * Add caching support to reduce load when multiple invocations of inspect happen.
+  * API to collect and expose historical/current statistics
+
 
 
 
