@@ -91,7 +91,9 @@ func NewPerCgroupStat(m *metrics.MetricContext, path string) *PerCgroupStat {
 // Free returns free physical memory including cache
 // Use soft_limit_in_bytes as upper bound or if not
 // set use system memory
-func (s *PerCgroupStat) Free() float64 {
+// NOT IMPLEMENTED YET
+// rename to Free() when done
+func (s *PerCgroupStat) free() float64 {
 	return 0
 }
 
