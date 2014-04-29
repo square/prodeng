@@ -46,6 +46,20 @@ func (c *CgroupStat) Collect(mountpoint string) {
 		return
 	}
 
+	// stop tracking cgroups which don't exist
+	// anymore or have no tasks
+	cgroupsMap := make(map[string]bool, len(cgroups))
+	for _, cgroup := range cgroups {
+		cgroupsMap[cgroup] = true
+	}
+
+	for cgroup, _ := range c.Cgroups {
+		_, ok := cgroupsMap[cgroup]
+		if !ok {
+			delete(c.Cgroups, cgroup)
+		}
+	}
+
 	for _, cgroup := range cgroups {
 		_, ok := c.Cgroups[cgroup]
 		if !ok {

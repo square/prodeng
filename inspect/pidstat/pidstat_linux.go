@@ -58,11 +58,8 @@ func NewProcessStat(m *metrics.MetricContext) *ProcessStat {
 			p := int(len(c.Processes) / 1024)
 			// always collect all metrics for first two samples
 			// and if number of processes < 1024
-			if n < 2 {
+			if n < 2 || p < 1 || n%p == 0 {
 				c.collectAttributes = true
-				c.Collect()
-			} else if p < 1 || n%p == 0 {
-				c.collectAttributes = false
 				c.Collect()
 			}
 			n++
