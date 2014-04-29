@@ -94,5 +94,10 @@ fmt.Println(cstat.Usage())
 
 ```
 
+####### Todo
+
+Performance can be improved. PerProcessStat needs to have better heuristics
+to backoff when the number of processes is > 1024
+
 
 
