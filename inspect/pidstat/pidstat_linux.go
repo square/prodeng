@@ -7,18 +7,18 @@ import (
 	"os"
 	// "math/rand"
 	//"regexp"
+	"fmt"
 	"github.com/square/prodeng/inspect/misc"
 	"github.com/square/prodeng/metrics"
 	"io/ioutil"
 	"math"
+	"os/user"
 	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 	"syscall"
 	"time"
-	"os/user"
-	"fmt"
 )
 
 /*
@@ -142,7 +142,7 @@ func (c *ProcessStat) Collect() {
 					if st != nil {
 						pidstat.Metrics.Uid = st.(*syscall.Stat_t).Uid
 						pidstat.Metrics.Gid = st.(*syscall.Stat_t).Gid
-						u,err := user.LookupId(fmt.Sprintf("%v",st.(*syscall.Stat_t).Uid))
+						u, err := user.LookupId(fmt.Sprintf("%v", st.(*syscall.Stat_t).Uid))
 						if err == nil {
 							pidstat.Metrics.User = u.Username
 						}

@@ -24,8 +24,8 @@ func main() {
 	// options
 	var batchmode bool
 	var cpuprofile = flag.String("cpuprofile", "", "write cpu profile to file")
-	flag.BoolVar(&batchmode, "-b", false, "Run in batch mode; suitable for parsing")
-	flag.BoolVar(&batchmode, "-batchmode", false, "Run in batch mode; suitable for parsing")
+	flag.BoolVar(&batchmode, "b", false, "Run in batch mode; suitable for parsing")
+	flag.BoolVar(&batchmode, "batchmode", false, "Run in batch mode; suitable for parsing")
 	flag.Parse()
 
 	// Enable Profiling
