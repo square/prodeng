@@ -57,7 +57,7 @@ iface: em2 TX: 0.00b/s, RX: 1.46Kb/s
 iface: em3 TX: NaNb/s, RX: NaNb/s
 iface: em4 TX: NaNb/s, RX: NaNb/s
 iface: bond0 TX: 271.70Mb/s, RX: 116.27Mb/s
-cgroup:app  cpu_throttling: 20% (1/24) mem: 0.0% (2.46GB/8.00GB)
+cgroup:app  cpu: 20% cpu_throttling: 20% (1/24) mem: 0.0% (2.46GB/8.00GB)
 Top processes by CPU usage:
 usage: 394.7, command: (java)
 usage: 3.0, command: (inspect)
