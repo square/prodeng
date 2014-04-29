@@ -41,36 +41,26 @@ http://godoc.org/github.com/square/prodeng/metrics
 
 ```
 --------------------------
-total: cpu: 15.8%, mem: 1.6% (4.51GB/283.79GB)
-disk: sdd usage: 0.1
-disk: sdk usage: 0.1
-disk: sdo usage: 0.0
-disk: sdi usage: 0.1
-disk: sdj usage: 0.0
-disk: sda usage: 0.0
-disk: sdf usage: 0.0
-disk: sdc usage: 2.4
-disk: sdl usage: 0.0
-iface: lo TX: 4.23Mb/s, RX: 4.23Mb/s
-iface: em1 TX: 271.70Mb/s, RX: 116.27Mb/s
-iface: em2 TX: 0.00b/s, RX: 1.46Kb/s
-iface: em3 TX: NaNb/s, RX: NaNb/s
-iface: em4 TX: NaNb/s, RX: NaNb/s
-iface: bond0 TX: 271.70Mb/s, RX: 116.27Mb/s
-cgroup:app  cpu: 20% cpu_throttling: 20% (1/24) mem: 0.0% (2.46GB/8.00GB)
+total: cpu: 34.0%, mem: 92.2% (43.45GB/47.13GB)
+disk: sda usage: 0.5
+iface: lo TX: 22.45Mb/s, RX: 22.45Mb/s
+iface: eth0 TX: 0.00b/s, RX: 0.00b/s
+iface: eth1 TX: 17.07Mb/s, RX: 24.46Mb/s
+iface: bond0 TX: 17.07Mb/s, RX: 24.46Mb/s
+cgroup:syam_test cpu: 9.9% cpu_throttling: 89.7% (0.1/16) mem: 0.0% (316.00KB/1.00GB)
 Top processes by CPU usage:
-usage: 394.7, command: (java)
-usage: 3.0, command: (inspect)
-usage: 1.0, command: (runner)
-usage: 0.0, command: (svlogd)
-usage: 0.0, command: (dsm_sa_datamgrd)
+cpu: 99.3%  command: (carbon-cache.py) user: apache pid: 15986
+cpu: 98.9%  command: (carbon-cache.py) user: apache pid: 31571
+cpu: 54.9%  command: (carbon-relay.py) user: apache pid: 1860
+cpu: 52.9%  command: (carbon-relay.py) user: apache pid: 1855
+cpu: 49.8%  command: (carbon-relay.py) user: apache pid: 1882
 ---
 Top processes by Mem usage:
-usage: 2.46GB, command: (java)
-usage: 140.07MB, command: (dsm_sa_datamgrd)
-usage: 28.45MB, command: (server)
-usage: 28.40MB, command: (runner)
-usage: 18.12MB, command: (ruby20)
+mem: 26.27GB command: (carbon-cache.py) user: apache pid: 15986
+mem: 15.91GB command: (carbon-cache.py) user: apache pid: 31571
+mem: 49.41MB command: (node) user: apache pid: 1863
+mem: 48.10MB command: (node) user: apache pid: 1852
+mem: 26.34MB command: (carbon-relay.py) user: apache pid: 1884
 ```
 
 ###### Example API use 
