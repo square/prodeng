@@ -94,10 +94,16 @@ fmt.Println(cstat.Usage())
 
 ```
 
-####### Todo
+###### Todo
 
-Performance can be improved. PerProcessStat needs to have better heuristics
+  * Performance can be improved. PerProcessStat needs to have better heuristics
 to backoff when the number of processes is > 1024
+  * Add intelligence to find problems. Start with easy ones like CPU usage
+  * Command line utility needs much nicer formatting and options to dig into per process/cgroup details
+  * Add io metrics per process (need root priviliges)
+  * Add caching support to reduce load when multiple invocations of inspect happen.
+  * API to collect and expose historical/current statistics
+
 
 
 
