@@ -109,6 +109,10 @@ func main() {
 
 			out = fmt.Sprintf("cgroup:%s ", name)
 			if s.cpu != nil {
+				// get CPU usage per cgroup from pidstat
+				// unfortunately this is not exposed at cgroup level
+				cpu_usage := procs.CPUUsagePerCgroup(name)
+				out += fmt.Sprintf("cpu: %3.1f%% ", cpu_usage)
 				out += fmt.Sprintf(
 					"cpu_throttling: %3.1f%% (%.1f/%d) ",
 					s.cpu.Throttle(), s.cpu.Quota(),

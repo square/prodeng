@@ -78,6 +78,8 @@ func (a ByCPUUsage) Len() int           { return len(a) }
 func (a ByCPUUsage) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByCPUUsage) Less(i, j int) bool { return a[i].CPUUsage() > a[j].CPUUsage() }
 
+// ByCPUUsage() returns an slice of *PerProcessStat entries sorted
+// by CPU usage
 func (c *ProcessStat) ByCPUUsage() []*PerProcessStat {
 	v := make([]*PerProcessStat, 0)
 	for _, o := range c.Processes {
@@ -95,6 +97,8 @@ func (a ByMemUsage) Len() int           { return len(a) }
 func (a ByMemUsage) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByMemUsage) Less(i, j int) bool { return a[i].MemUsage() > a[j].MemUsage() }
 
+// ByMemUsage() returns an slice of *PerProcessStat entries sorted
+// by Memory usage
 func (c *ProcessStat) ByMemUsage() []*PerProcessStat {
 	v := make([]*PerProcessStat, 0)
 	for _, o := range c.Processes {
@@ -106,8 +110,33 @@ func (c *ProcessStat) ByMemUsage() []*PerProcessStat {
 	return v
 }
 
-func (c *ProcessStat) ByCgroup() {
+// CPUUsagePerCgroup returns cumulative CPU usage by cgroup
+func (c *ProcessStat) CPUUsagePerCgroup(cgroup string) float64 {
+	var ret float64
+	if !path.IsAbs(cgroup) {
+		cgroup = "/" + cgroup
+	}
 
+	for _, o := range c.Processes {
+		if (o.Metrics.Cgroup["cpu"] == cgroup) && !math.IsNaN(o.CPUUsage()) {
+			ret += o.CPUUsage()
+		}
+	}
+	return ret
+}
+
+// MemUsagePerCgroup returns cumulative Memory usage by cgroup
+func (c *ProcessStat) MemUsagePerCgroup(cgroup string) float64 {
+	var ret float64
+	if !path.IsAbs(cgroup) {
+		cgroup = "/" + cgroup
+	}
+	for _, o := range c.Processes {
+		if (o.Metrics.Cgroup["memory"] == cgroup) && !math.IsNaN(o.MemUsage()) {
+			ret += o.MemUsage()
+		}
+	}
+	return ret
 }
 
 // Collect walks through /proc and updates stats
@@ -194,7 +223,7 @@ type PerProcessStatMetrics struct {
 	Pid       string
 	Comm      string
 	Cmdline   string
-	Cgroup    *map[string]string
+	Cgroup    map[string]string
 	Uid       uint32
 	Gid       uint32
 	User      string
@@ -263,6 +292,6 @@ func (s *PerProcessStatMetrics) CollectAttributes() {
 			f := strings.Split(scanner.Text(), ":")
 			t[f[1]] = f[2]
 		}
-		s.Cgroup = &t
+		s.Cgroup = t
 	}
 }
