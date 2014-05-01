@@ -28,10 +28,9 @@ import (
 import "C"
 
 type ProcessStat struct {
-	Mountpoint        string
-	m                 *metrics.MetricContext
-	Processes         map[string]*PerProcessStat
-	collectAttributes bool
+	Mountpoint string
+	m          *metrics.MetricContext
+	Processes  map[string]*PerProcessStat
 }
 
 // NewProcessStat allocates a new ProcessStat object
@@ -56,11 +55,13 @@ func NewProcessStat(m *metrics.MetricContext) *ProcessStat {
 	go func() {
 		for _ = range ticker.C {
 			p := int(len(c.Processes) / 1024)
+			if n == 0 {
+				c.Collect(true)
+			}
 			// always collect all metrics for first two samples
 			// and if number of processes < 1024
-			if n < 2 || p < 1 || n%p == 0 {
-				c.collectAttributes = true
-				c.Collect()
+			if p < 1 || n%p == 0 {
+				c.Collect(false)
 			}
 			n++
 		}
@@ -142,9 +143,11 @@ func (c *ProcessStat) MemUsagePerCgroup(cgroup string) float64 {
 // Collect walks through /proc and updates stats
 // Collect is usually called internally based on
 // parameters passed via metric context
+// Takes a single boolean parameter which specifies
+// if we should collect/refresh all process attributes
 // XXX: restructure to avoid right indent
 
-func (c *ProcessStat) Collect() {
+func (c *ProcessStat) Collect(collectAttributes bool) {
 	h := c.Processes
 	for _, v := range h {
 		v.Metrics.dead = true
@@ -163,7 +166,10 @@ func (c *ProcessStat) Collect() {
 					pidstat = NewPerProcessStat(c.m, path.Base(p))
 					h[p] = pidstat
 				}
-				if c.collectAttributes {
+				// collect other process attributes like uid,gid,cgroup
+				// etc only for new processes or when run for the first
+				// time
+				if collectAttributes || !ok {
 					st := f.Sys()
 					if st != nil {
 						pidstat.Metrics.Uid = st.(*syscall.Stat_t).Uid
