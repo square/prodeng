@@ -14,7 +14,7 @@ import (
 	"math"
 	"os/user"
 	"path"
-	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"syscall"
@@ -48,7 +48,7 @@ func NewProcessStat(m *metrics.MetricContext) *ProcessStat {
 	c := new(ProcessStat)
 	c.m = m
 
-	c.Processes = make(map[string]*PerProcessStat, 4096)
+	c.Processes = make(map[string]*PerProcessStat, 1024)
 
 	var n int
 	ticker := time.NewTicker(m.Step)
@@ -145,7 +145,6 @@ func (c *ProcessStat) MemUsagePerCgroup(cgroup string) float64 {
 // parameters passed via metric context
 // Takes a single boolean parameter which specifies
 // if we should collect/refresh all process attributes
-// XXX: restructure to avoid right indent
 
 func (c *ProcessStat) Collect(collectAttributes bool) {
 	h := c.Processes
@@ -153,40 +152,34 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 		v.Metrics.dead = true
 	}
 
-	_ = filepath.Walk(
-		"/proc",
-		func(p string, f os.FileInfo, e error) error {
-			if e != nil {
-				panic(e)
+	pids, err := ioutil.ReadDir("/proc")
+	if err != nil {
+		return
+	}
+
+	pidre := regexp.MustCompile("^\\d+")
+
+	for _, f := range pids {
+		p := f.Name()
+		st := f.Sys()
+		if f.IsDir() && pidre.MatchString(p) {
+			pidstat, ok := h[p]
+			if !ok {
+				pidstat = NewPerProcessStat(c.m, path.Base(p))
+				h[p] = pidstat
 			}
-			if f.IsDir() && p != "/proc" {
-				p := path.Base(p)
-				pidstat, ok := h[p]
-				if !ok {
-					pidstat = NewPerProcessStat(c.m, path.Base(p))
-					h[p] = pidstat
-				}
-				// collect other process attributes like uid,gid,cgroup
-				// etc only for new processes or when run for the first
-				// time
-				if collectAttributes || !ok {
-					st := f.Sys()
-					if st != nil {
-						pidstat.Metrics.Uid = st.(*syscall.Stat_t).Uid
-						pidstat.Metrics.Gid = st.(*syscall.Stat_t).Gid
-						u, err := user.LookupId(fmt.Sprintf("%v", st.(*syscall.Stat_t).Uid))
-						if err == nil {
-							pidstat.Metrics.User = u.Username
-						}
-					}
-					pidstat.Metrics.CollectAttributes()
-				}
-				pidstat.Metrics.Collect()
-				pidstat.Metrics.dead = false
-				return filepath.SkipDir
+			pidstat.Metrics.Collect()
+			pidstat.Metrics.dead = false
+
+			// collect other process attributes like uid,gid,cgroup
+			// etc only for new processes or when run for the first
+			// time
+			if collectAttributes || !ok && st != nil {
+				pidstat.Metrics.populateId(st)
+				pidstat.Metrics.CollectAttributes()
 			}
-			return nil
-		})
+		}
+	}
 
 	// remove dead processes
 	for k, v := range h {
@@ -299,5 +292,15 @@ func (s *PerProcessStatMetrics) CollectAttributes() {
 			t[f[1]] = f[2]
 		}
 		s.Cgroup = t
+	}
+}
+
+// unexported
+func (s *PerProcessStatMetrics) populateId(st interface{}) {
+	s.Uid = st.(*syscall.Stat_t).Uid
+	s.Gid = st.(*syscall.Stat_t).Gid
+	u, err := user.LookupId(fmt.Sprintf("%v", s.Uid))
+	if err == nil {
+		s.User = u.Username
 	}
 }

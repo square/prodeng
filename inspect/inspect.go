@@ -43,7 +43,7 @@ func main() {
 
 	// Initialize a metric context with step 1 second and maximum
 	// history of 3 samples
-	m := metrics.NewMetricContext("system", time.Millisecond*1000*1, 3)
+	m := metrics.NewMetricContext("system", time.Millisecond*1000*1, 2)
 
 	// Collect cpu/memory/disk/interface metrics
 	cstat := cpustat.New(m)
