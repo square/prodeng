@@ -140,8 +140,11 @@ func (c *Counter) CurRate() float64 {
 	a = c.history[a_idx]
 	b = c.history[b_idx]
 
-	if a > 0 && b > 0 && a >= b {
+	if a > b {
 		return float64(a-b) / c.Step.Seconds()
+	}
+	if a == b {
+		return 0
 	}
 
 	return math.NaN()
