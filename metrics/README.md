@@ -20,10 +20,10 @@ c.Set(12.0) // Set Value
 c.V // get Value
 ```
 
-By design, no locks are held when updating metrics.
 
 ###### TODO
 
 1. Cleanup API - there are bunch of inconsistencies.
 2. Add support for basic statistics that are cheap to
    calculate at runtime
+3. Remove locks where not needed

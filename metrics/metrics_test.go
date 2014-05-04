@@ -6,12 +6,27 @@ import "testing"
 import "time"
 import "math"
 
+// BUG: This test will most likely fail on a highly loaded
+// system
 func TestCounterRate(t *testing.T) {
-	m := NewMetricContext("testing",time.Millisecond * 1,1)
+	m := NewMetricContext("testing",time.Millisecond * 100,1)
 	c := m.NewCounter("testcounter")
-	c.Set(10)
-	c.Set(100)
-	want := 90.0 * 1000
+	// increment counter every millisecond in two goroutines
+	// rate ~ 20/step
+        tick1 := time.NewTicker(time.Millisecond)
+        go func() {
+                for _ = range tick1.C {
+			c.Add(1)
+                }
+        }()
+        tick2 := time.NewTicker(time.Millisecond)
+        go func() {
+                for _ = range tick2.C {
+			c.Add(1)
+                }
+        }()
+	time.Sleep(time.Millisecond*1000)
+	want := 10.0
 	out  := c.CurRate()
 	if math.Abs(out - want) > math.SmallestNonzeroFloat64 {
 		t.Errorf("c.CurRate() = %f, want %f", out,want)
@@ -33,21 +48,21 @@ func TestCounterRateNoChange(t *testing.T) {
 func TestDefaultGaugeVal(t *testing.T) {
 	m := NewMetricContext("testing",time.Millisecond * 1,1)
 	c := m.NewGauge("stuff")
-	if !math.IsNaN(c.V) {
-		t.Errorf("c.V = %v, want %v", c.V,math.NaN())
+	if !math.IsNaN(c.Get()) {
+		t.Errorf("c.Get() = %v, want %v", c.Get(),math.NaN())
 	}
 }
 func TestGaugePercentile(t *testing.T) {
 	m := NewMetricContext("testing",time.Millisecond * 1,1)
 	c := m.NewGauge("stuff")
-	if !math.IsNaN(c.V) {
-		t.Errorf("c.V = %v, want %v", c.V,math.NaN())
+	if !math.IsNaN(c.Get()) {
+		t.Errorf("c.Get() = %v, want %v", c.Get(),math.NaN())
 	}
 }
 func TestDefaultCounterVal(t *testing.T) {
 	m := NewMetricContext("testing",time.Millisecond * 1,1)
 	c := m.NewCounter("stuff")
-	if c.V != 0 {
-		t.Errorf("c.V = %v, want %v", c.V,0)
+	if c.Get() != 0 {
+		t.Errorf("c.Get() = %v, want %v", c.Get(),0)
 	}
 }

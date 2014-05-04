@@ -214,7 +214,7 @@ func (s *PerProcessStat) CPUUsage() float64 {
 
 func (s *PerProcessStat) MemUsage() float64 {
 	o := s.Metrics
-	return o.Rss.V * float64(s.pagesize)
+	return o.Rss.Get() * float64(s.pagesize)
 }
 
 // XXX: move non metrics to PerProcessStat

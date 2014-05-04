@@ -100,7 +100,7 @@ func (s *PerCgroupStat) Throttle() float64 {
 
 func (s *PerCgroupStat) Quota() float64 {
 	o := s.Metrics
-	return (o.Cfs_quota_us.V / o.Cfs_period_us.V)
+	return (o.Cfs_quota_us.Get() / o.Cfs_period_us.Get())
 }
 
 type PerCgroupStatMetrics struct {

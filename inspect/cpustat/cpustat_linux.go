@@ -171,5 +171,5 @@ func parseCPUline(s *CPUStatPerCPU, f []string) {
 	s.Softirq.Set(misc.ParseUint(f[7]))
 	s.Steal.Set(misc.ParseUint(f[8]))
 	s.Guest.Set(misc.ParseUint(f[9]))
-	s.Total.Set(s.User.V + s.UserLowPrio.V + s.System.V + s.Idle.V)
+	s.Total.Set(s.User.Get() + s.UserLowPrio.Get() + s.System.Get() + s.Idle.Get())
 }

@@ -100,13 +100,13 @@ func (s *PerCgroupStat) free() float64 {
 // Usage returns physical memory in use; not including buffers/cached/sreclaimable
 func (s *PerCgroupStat) Usage() float64 {
 	o := s.Metrics
-	return o.Rss.V + o.Mapped_file.V
+	return o.Rss.Get() + o.Mapped_file.Get()
 }
 
 // SoftLimit returns soft-limit for the cgroup
 func (s *PerCgroupStat) SoftLimit() float64 {
 	o := s.Metrics
-	return o.Soft_Limit_In_Bytes.V
+	return o.Soft_Limit_In_Bytes.Get()
 }
 
 type PerCgroupStatMetrics struct {
