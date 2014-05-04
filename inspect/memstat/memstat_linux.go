@@ -29,19 +29,19 @@ func New(m *metrics.MetricContext) *MemStat {
 // Free returns free physical memory including buffers/caches/sreclaimable
 func (s *MemStat) Free() float64 {
 	o := s.Metrics
-	return o.MemFree.V + o.Buffers.V + o.Cached.V + o.SReclaimable.V
+	return o.MemFree.Get() + o.Buffers.Get() + o.Cached.Get() + o.SReclaimable.Get()
 }
 
 // Usage returns physical memory in use; not including buffers/cached/sreclaimable
 func (s *MemStat) Usage() float64 {
 	o := s.Metrics
-	return o.MemTotal.V - s.Free()
+	return o.MemTotal.Get() - s.Free()
 }
 
 // Usage returns total physical memory
 func (s *MemStat) Total() float64 {
 	o := s.Metrics
-	return o.MemTotal.V
+	return o.MemTotal.Get()
 }
 
 type MemStatMetrics struct {

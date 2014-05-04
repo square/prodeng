@@ -93,7 +93,7 @@ func (s *DiskStat) Collect() {
 		d.WriteMerged.Set(f[5])
 		d.WriteSectors.Set(f[6])
 		d.WriteSpentMsecs.Set(f[7])
-		d.IOInProgress.V = float64(f[8])
+		d.IOInProgress.Set(float64(f[8]))
 		d.IOSpentMsecs.Set(f[9])
 		d.WeightedIOSpentMsecs.Set(f[10])
 	}

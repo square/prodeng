@@ -7,6 +7,7 @@ import (
 	"math"
 	"sort"
 	"time"
+	"sync"
 )
 
 type MetricContext struct {
@@ -19,23 +20,23 @@ type MetricContext struct {
 }
 
 type Counter struct {
-	V          uint64
+	v          uint64
 	K          string
-	Step       time.Duration
-	Nsamples   int
 	// Fixed buffer and a marker for tracking statistics
 	idx     int
 	history []uint64
+	m	*MetricContext
+	mu	sync.RWMutex
 }
 
 type Gauge struct {
-	V          float64
+	v          float64
 	K          string
-	Step       time.Duration
-	Nsamples   int
 	// Fixed buffer and a marker for tracking statistics
 	idx     int
 	history []float64
+	m	*MetricContext
+	mu	sync.RWMutex
 }
 
 // Creates a new metric context. A metric context specifies a namespace
@@ -46,6 +47,9 @@ func NewMetricContext(namespace string, Step time.Duration, Nsamples int) *Metri
 	m := new(MetricContext)
 	m.namespace = namespace
 	m.Step = Step
+	if Nsamples < 2 {
+		Nsamples = 2
+	}
 	m.Nsamples = Nsamples
 	m.Counters = make(map[string]*Counter)
 	m.Gauges = make(map[string]*Gauge)
@@ -55,22 +59,11 @@ func NewMetricContext(namespace string, Step time.Duration, Nsamples int) *Metri
 // print ALL metrics to stdout
 func (m *MetricContext) Print() {
 	for key, value := range m.Counters {
-		fmt.Printf("counter: %s , value: %d history: %v \n", key, value.V, value.history)
+		fmt.Printf("counter: %s , value: %d history: %v \n", key, value.v, value.history)
 	}
 	for key, value := range m.Gauges {
-		fmt.Printf("gauge: %s , value: %f history: %v \n", key, value.V,
+		fmt.Printf("gauge: %s , value: %f history: %v \n", key, value.v,
 			value.history)
-	}
-}
-
-// Update statistics for all metrics
-func (m *MetricContext) UpdateStats() {
-	for _, g := range m.Gauges {
-		g.UpdateStats()
-	}
-
-	for _, c := range m.Counters {
-		c.UpdateStats()
 	}
 }
 
@@ -79,47 +72,56 @@ func (m *MetricContext) UpdateStats() {
 func (m *MetricContext) NewCounter(name string) *Counter {
 	c := new(Counter)
 	c.K = name
-	c.Nsamples = m.Nsamples
-	// We need atleast two samples for rate calcuation
-	if c.Nsamples < 2 {
-		c.Nsamples = 2
-	}
-	c.history = make([]uint64, c.Nsamples) // 0 is a-ok as not updated value
-	c.Step = m.Step
+	c.m = m
+	c.history = make([]uint64, c.m.Nsamples) // 0 is a-ok as not updated value
 	m.Counters[name] = c
 	return c
 }
 
-// Set Counter Value. This is useful if you are reading a metric
+// Set Counter value. This is useful if you are reading a metric
 // that is already a counter
-// Note: calls UpdateStats()
 func (c *Counter) Set(v uint64) {
-	c.V = v
-	c.UpdateStats()
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.v = v
+	c.updateStats()
 }
 
-// Increment the counter value
-// Note: UpdateStats() is not called
-func (c *Counter) Inc() {
-	c.V++
+// Add value to counter
+func (c *Counter) Add(delta uint64) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.v += delta
+	c.updateStats()
 }
 
+// Get value of counter
+func (c *Counter) Get() uint64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.v
+}
+
+// unexported
 // Store current value in history
 // This function or Set needs to be called atleast twice for
 // rate calculation
-func (c *Counter) UpdateStats() {
+func (c *Counter) updateStats() {
 	// Store current value in history
-	c.history[c.idx] = c.V
+	c.history[c.idx] = c.v
 	c.idx++
-	if c.idx == c.Nsamples {
+	if c.idx == c.m.Nsamples {
 		c.idx = 0
 	}
 }
 
-// CurRate() calculates change of value over time as indicated
-// step.
-// XXX: add detection for counter wrap / counter reset
+// CurRate() calculates change of value over Step
+// Unit: seconds
+// TODO: add detection for counter wrap / counter reset
+
 func (c *Counter) CurRate() float64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	var a_idx, b_idx int
 	var a, b uint64
 
@@ -140,11 +142,17 @@ func (c *Counter) CurRate() float64 {
 	a = c.history[a_idx]
 	b = c.history[b_idx]
 
-	if a > b {
-		return float64(a-b) / c.Step.Seconds()
-	}
-	if a == b {
+	// Triggered in two use cases
+	// 1. counters have not been updated at all
+	// 2. no updates to counters
+	// TODO: return NaN in case of 1
+
+	if a == 0 && b == 0 {
 		return 0
+	}
+
+	if a >= b && b > 0  {
+		return float64(a-b) / c.m.Step.Seconds()
 	}
 
 	return math.NaN()
@@ -155,9 +163,9 @@ func (c *Counter) CurRate() float64 {
 func (m *MetricContext) NewGauge(name string) *Gauge {
 	g := new(Gauge)
 	g.K = name
-	g.V = math.NaN()
-	g.Nsamples = m.Nsamples
-	g.history = make([]float64, g.Nsamples)
+	g.v = math.NaN()
+	g.m = m
+	g.history = make([]float64, g.m.Nsamples)
 	for i, _ := range g.history {
 		g.history[i] = math.NaN()
 	}
@@ -167,18 +175,24 @@ func (m *MetricContext) NewGauge(name string) *Gauge {
 
 // Set value of Gauge
 func (g *Gauge) Set(v float64) {
-	g.V = v
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.v = v
+	g.updateStats()
 }
 
-// UpdateStats() stores the current value in history
-func (g *Gauge) UpdateStats() {
-	g.history[g.idx] = g.V
-	g.idx = (g.idx + 1) % g.Nsamples
+func (g *Gauge) Get() float64 {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.v
 }
 
 // Percentile
 // should be in statistics package
 func (g *Gauge) Percentile(percentile float64) float64 {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	// Nearest rank implementation
 	// http://en.wikipedia.org/wiki/Percentile
 
@@ -188,16 +202,24 @@ func (g *Gauge) Percentile(percentile float64) float64 {
 	}
 
 	// Since slices are zero-indexed, we are naturally rounded up
-	nearest_rank := int((percentile / 100) * float64(g.Nsamples))
+	nearest_rank := int((percentile / 100) * float64(g.m.Nsamples))
 
-	if nearest_rank == g.Nsamples {
-		nearest_rank = g.Nsamples - 1
+	if nearest_rank == g.m.Nsamples {
+		nearest_rank = g.m.Nsamples - 1
 	}
 
-	in := make([]float64, g.Nsamples)
+	in := make([]float64, g.m.Nsamples)
 	copy(in, g.history)
 
 	sort.Float64s(in)
 
 	return in[nearest_rank]
+}
+
+// unexported
+
+// updateStats() stores the current value in history
+func (g *Gauge) updateStats() {
+	g.history[g.idx] = g.v
+	g.idx = (g.idx + 1) % g.m.Nsamples
 }
