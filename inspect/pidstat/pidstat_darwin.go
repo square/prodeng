@@ -113,7 +113,6 @@ func (c *ProcessStat) ByMemUsage() []*PerProcessStat {
 
 func (c *ProcessStat) Collect(collectAttributes bool) {
 
-	fmt.Println(len(c.Processes))
 	h := c.Processes
 	for _, v := range h {
 		v.dead = true
@@ -150,25 +149,26 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 	goTaskList := *(*[]C.task_name_t)(unsafe.Pointer(&hdr))
 
 	// mach_msg_type_number_t - type natural_t = uint32_t
-	var i uint32
 	now := time.Now().UnixNano()
+	var i uint32
 	for i = 0; i < uint32(taskCount); i++ {
 
 		taskId := goTaskList[i]
 		var pid C.int
 		// var tinfo C.task_info_data_t
-		var taskBasicInfoCount C.mach_msg_type_number_t
-		var taskInfo C.mach_task_basic_info_data_t
+		var count C.mach_msg_type_number_t
+		var taskBasicInfo C.mach_task_basic_info_data_t
+		var taskAbsoluteInfo C.task_absolutetime_info_data_t
 
 		if (C.pid_for_task(C.mach_port_name_t(taskId),&pid) != C.KERN_SUCCESS) ||
 		   (pid < 0) {
 			continue
 		}
 
-		taskBasicInfoCount = C.MACH_TASK_BASIC_INFO_COUNT
+		count = C.MACH_TASK_BASIC_INFO_COUNT
 		kr := C.task_info(taskId, C.MACH_TASK_BASIC_INFO ,
-				  (C.task_info_t)(unsafe.Pointer(&taskInfo)),
-				  &taskBasicInfoCount)
+				  (C.task_info_t)(unsafe.Pointer(&taskBasicInfo)),
+				  &count)
 		if kr != C.KERN_SUCCESS {
 			continue
 		}
@@ -184,14 +184,23 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 			pidstat.CollectAttributes()
 		}
 
-		pidstat.Metrics.VirtualSize.Set(float64(taskInfo.virtual_size))
-		pidstat.Metrics.ResidentSize.Set(float64(taskInfo.resident_size))
-		pidstat.Metrics.ResidentSizeMax.Set(float64(taskInfo.resident_size_max))
-		pidstat.Metrics.UserTime.Set(nanoSeconds(taskInfo.user_time))
-		pidstat.Metrics.SystemTime.Set(nanoSeconds(taskInfo.system_time))
-		pidstat.Metrics.UpdatedAt.Set(uint64(now - pidstat.Metrics.StartedAt))
+		pidstat.Metrics.VirtualSize.Set(float64(taskBasicInfo.virtual_size))
+		pidstat.Metrics.ResidentSize.Set(float64(taskBasicInfo.resident_size))
+		pidstat.Metrics.ResidentSizeMax.Set(float64(taskBasicInfo.resident_size_max))
+
+		count = C.TASK_ABSOLUTETIME_INFO_COUNT
+		kr = C.task_info(taskId, C.TASK_ABSOLUTETIME_INFO ,
+				  (C.task_info_t)(unsafe.Pointer(&taskAbsoluteInfo)),
+				  &count)
+		if kr != C.KERN_SUCCESS {
+			continue
+		}
+		pidstat.Metrics.UserTime.Set(uint64(taskAbsoluteInfo.total_user))
+		pidstat.Metrics.SystemTime.Set(uint64(taskAbsoluteInfo.total_system))
+	        pidstat.Metrics.UpdatedAt.Set(uint64(now - pidstat.Metrics.StartedAt))
 		pidstat.dead = false
 	}
+
 
 	// remove dead processes
 	for k, v := range h {
@@ -200,13 +209,6 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 		}
 	}
 
-}
-
-func nanoSeconds(t C.time_value_t) uint64 {
-	a := t.seconds * (1000 * 1000) // nanoseconds
-	b := t.microseconds
-
-	return uint64(a+b) // we dont care about overflow
 }
 
 
@@ -231,8 +233,8 @@ func NewPerProcessStat(m *metrics.MetricContext, p string) *PerProcessStat {
 
 func (s *PerProcessStat) CPUUsage() float64 {
 	o := s.Metrics
-	t := (o.UpdatedAt.CurRate() / float64(time.Second.Nanoseconds()))
-	return (o.UserTime.CurRate() + o.SystemTime.CurRate()) / t
+	t := o.UpdatedAt.CurRate()
+	return ((o.UserTime.CurRate() + o.SystemTime.CurRate()) / t) * 100
 }
 
 func (s *PerProcessStat) MemUsage() float64 {
