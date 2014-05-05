@@ -1,6 +1,6 @@
 // Copyright (c) 2014 Square, Inc
 
-package misc
+package osmain
 
 import (
 	"github.com/square/prodeng/metrics"

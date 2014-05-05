@@ -9,6 +9,7 @@ import (
 	"github.com/square/prodeng/inspect/cpustat"
 	"github.com/square/prodeng/inspect/memstat"
 	"github.com/square/prodeng/inspect/misc"
+	"github.com/square/prodeng/inspect/osmain"
 	"github.com/square/prodeng/inspect/pidstat"
 	"github.com/square/prodeng/metrics"
 	"time"
@@ -33,7 +34,18 @@ func main() {
 	mstat := memstat.New(m)
 	procs := pidstat.NewProcessStat(m)
 
-	d := misc.RegisterOsDependent(m)
+	// pass the collected metrics to OS dependent set if they
+	// need it
+	osind := new(osmain.OsIndependentStats)
+	osind.Cstat = cstat
+	osind.Mstat = mstat
+	osind.Procs = procs
+
+	// register os dependent metrics
+	// these could be specific to the OS (say cgroups)
+	// or stats which are implemented not on all supported
+	// platforms yet
+	d := osmain.RegisterOsDependent(m, osind)
 
 	// Check metrics every 2s
 	ticker := time.NewTicker(time.Millisecond * 1100 * 2)
@@ -59,9 +71,9 @@ func main() {
 		for i := 0; i < n; i++ {
 			fmt.Printf("cpu: %3.1f%%  command: %s user: %s pid: %v\n",
 				procs_by_usage[i].CPUUsage(),
-				procs_by_usage[i].Comm,
-				procs_by_usage[i].User,
-				procs_by_usage[i].Pid)
+				procs_by_usage[i].Comm(),
+				procs_by_usage[i].User(),
+				procs_by_usage[i].Pid())
 		}
 
 		fmt.Println("---")
@@ -75,11 +87,11 @@ func main() {
 		for i := 0; i < n; i++ {
 			fmt.Printf("mem: %s command: %s user: %s pid: %v\n",
 				misc.ByteSize(procs_by_usage[i].MemUsage()),
-				procs_by_usage[i].Comm,
-				procs_by_usage[i].User,
-				procs_by_usage[i].Pid)
+				procs_by_usage[i].Comm(),
+				procs_by_usage[i].User(),
+				procs_by_usage[i].Pid())
 		}
 
-		misc.PrintOsDependent(d)
+		osmain.PrintOsDependent(d)
 	}
 }
