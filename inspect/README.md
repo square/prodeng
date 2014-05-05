@@ -7,8 +7,14 @@ inspect command line is a utility that gives a
 brief overview on current state of system resource
 usage.
 
+Supported platforms: linux, MacOSX 10.9
+
 inspect on linux gathers cpu,memory,io usage currently
 both at system level, per pid/cgroup level for cpu/memory.
+
+inspect on MacOSX gathers cpu,memory usage currently
+both at system level, per pid. inspect needs root privileges
+on MacOSX for per-pid information.
 
 inspect aims to evolve to be an intelligent tool that
 can spot problems.
@@ -20,8 +26,6 @@ examples:
   * process X rejecting connections because TCP is out of memory
   * CPU spike at 14:00 UTC. Top users: A, B
 
-
-For now it just dumps metrics like top,iostat
 
 ###### Installation
 
@@ -42,12 +46,7 @@ http://godoc.org/github.com/square/prodeng/metrics
 ```
 --------------------------
 total: cpu: 34.0%, mem: 92.2% (43.45GB/47.13GB)
-disk: sda usage: 0.5
-iface: lo TX: 22.45Mb/s, RX: 22.45Mb/s
-iface: eth0 TX: 0.00b/s, RX: 0.00b/s
-iface: eth1 TX: 17.07Mb/s, RX: 24.46Mb/s
-iface: bond0 TX: 17.07Mb/s, RX: 24.46Mb/s
-cgroup:syam_test cpu: 9.9% cpu_throttling: 89.7% (0.1/16) mem: 0.0% (316.00KB/1.00GB)
+---
 Top processes by CPU usage:
 cpu: 99.3%  command: (carbon-cache.py) user: apache pid: 15986
 cpu: 98.9%  command: (carbon-cache.py) user: apache pid: 31571
@@ -61,6 +60,15 @@ mem: 15.91GB command: (carbon-cache.py) user: apache pid: 31571
 mem: 49.41MB command: (node) user: apache pid: 1863
 mem: 48.10MB command: (node) user: apache pid: 1852
 mem: 26.34MB command: (carbon-relay.py) user: apache pid: 1884
+--
+disk: sda usage: 0.5%
+---
+iface: lo TX: 22.45Mb/s, RX: 22.45Mb/s
+iface: eth0 TX: 0.00b/s, RX: 0.00b/s
+iface: eth1 TX: 17.07Mb/s, RX: 24.46Mb/s
+iface: bond0 TX: 17.07Mb/s, RX: 24.46Mb/s
+--
+cgroup:syam_test cpu: 9.9% cpu_throttling: 89.7% (0.1/16) mem: 0.0% (316.00KB/1.00GB)
 ```
 
 ###### Example API use 
