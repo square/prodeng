@@ -247,15 +247,15 @@ func (s *PerProcessStat) MemUsage() float64 {
 }
 
 func (s *PerProcessStat) Pid() string {
-        return s.pid
+	return s.pid
 }
 
 func (s *PerProcessStat) Comm() string {
-        return s.comm
+	return s.comm
 }
 
 func (s *PerProcessStat) User() string {
-        return s.user
+	return s.user
 }
 
 type PerProcessStatMetrics struct {
