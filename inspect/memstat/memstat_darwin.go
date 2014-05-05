@@ -49,7 +49,7 @@ func New(m *metrics.MetricContext) *MemStat {
 // to get that count
 func (s *MemStat) Free() float64 {
 	o := s.Metrics
-	return o.Free.Get() + o.Inactive.Get()
+	return o.Free.Get() + o.Inactive.Get() + o.Purgeable.Get()
 }
 
 // Usage returns physical memory in use
