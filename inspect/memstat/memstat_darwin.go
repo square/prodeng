@@ -44,6 +44,9 @@ func New(m *metrics.MetricContext) *MemStat {
 }
 
 // Free returns free memory
+// Inactive lists may contain dirty pages
+// Unfortunately there doesn't seem to be easy way
+// to get that count
 func (s *MemStat) Free() float64 {
 	o := s.Metrics
 	return o.Free.Get() + o.Inactive.Get()
@@ -52,7 +55,7 @@ func (s *MemStat) Free() float64 {
 // Usage returns physical memory in use
 func (s *MemStat) Usage() float64 {
 	o := s.Metrics
-	return o.Active.Get()
+	return o.Total.Get() - s.Free()
 }
 
 // Usage returns total physical memory
