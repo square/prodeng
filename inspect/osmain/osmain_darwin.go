@@ -6,13 +6,13 @@ import (
 	"github.com/square/prodeng/metrics"
 )
 
-type DarwinMetrics struct {
+type DarwinStats struct {
 }
 
-func RegisterOsDependent(m *metrics.MetricContext) *DarwinMetrics {
-	x := new(DarwinMetrics)
+func RegisterOsDependent(m *metrics.MetricContext, d *OsIndependentStats) *DarwinStats {
+	x := new(DarwinStats)
 	return x
 }
 
-func PrintOsDependent(d *DarwinMetrics) {
+func PrintOsDependent(d *DarwinStats) {
 }

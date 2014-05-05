@@ -218,10 +218,10 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 
 // Per Process functions
 type PerProcessStat struct {
-	Pid     string
+	pid     string
 	Uid     int
-	User    string
-	Comm    string
+	user    string
+	comm    string
 	Metrics *PerProcessStatMetrics
 	m       *metrics.MetricContext
 	dead    bool
@@ -230,7 +230,7 @@ type PerProcessStat struct {
 func NewPerProcessStat(m *metrics.MetricContext, p string) *PerProcessStat {
 	c := new(PerProcessStat)
 	c.m = m
-	c.Pid = p
+	c.pid = p
 	c.Metrics = NewPerProcessStatMetrics(m)
 	return c
 }
@@ -244,6 +244,18 @@ func (s *PerProcessStat) CPUUsage() float64 {
 func (s *PerProcessStat) MemUsage() float64 {
 	o := s.Metrics
 	return o.ResidentSize.Get()
+}
+
+func (s *PerProcessStat) Pid() string {
+        return s.pid
+}
+
+func (s *PerProcessStat) Comm() string {
+        return s.comm
+}
+
+func (s *PerProcessStat) User() string {
+        return s.user
 }
 
 type PerProcessStatMetrics struct {
@@ -269,10 +281,10 @@ func (s *PerProcessStat) CollectAttributes(pid C.int) {
 	var kp C.struct_kinfo_proc
 
 	C.get_process_info(&kp, C.pid_t(pid))
-	s.Comm = C.GoString((*C.char)(unsafe.Pointer(&kp.kp_proc.p_comm)))
+	s.comm = C.GoString((*C.char)(unsafe.Pointer(&kp.kp_proc.p_comm)))
 	s.Uid = int(kp.kp_eproc.e_ucred.cr_uid)
 	u, err := user.LookupId(fmt.Sprintf("%v", s.Uid))
 	if err == nil {
-		s.User = u.Username
+		s.user = u.Username
 	}
 }
