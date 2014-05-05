@@ -217,7 +217,18 @@ func (s *PerProcessStat) MemUsage() float64 {
 	return o.Rss.Get() * float64(s.pagesize)
 }
 
-// XXX: move non metrics to PerProcessStat
+func (s *PerProcessStat) Pid() string {
+	return s.Metrics.Pid
+}
+
+func (s *PerProcessStat) Comm() string {
+	return s.Metrics.Comm
+}
+
+func (s *PerProcessStat) User() string {
+	return s.Metrics.User
+}
+
 type PerProcessStatMetrics struct {
 	Pid       string
 	Comm      string
