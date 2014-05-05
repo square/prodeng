@@ -3,17 +3,16 @@
 package pidstat
 
 import (
+	"fmt"
+	"github.com/square/prodeng/inspect/misc"
+	"github.com/square/prodeng/metrics"
 	"math"
 	_ "os/user"
-	"fmt"
+	"reflect"
 	"sort"
 	"time"
 	"unsafe"
-	"reflect"
-	"github.com/square/prodeng/inspect/misc"
-	"github.com/square/prodeng/metrics"
 )
-
 
 /*
 #include <mach/mach.h>
@@ -23,10 +22,9 @@ import (
 import "C"
 
 type ProcessStat struct {
-	Processes  map[string]*PerProcessStat
-	m          *metrics.MetricContext
-	hport	   C.host_t
-
+	Processes map[string]*PerProcessStat
+	m         *metrics.MetricContext
+	hport     C.host_t
 }
 
 // NewProcessStat allocates a new ProcessStat object
@@ -123,17 +121,16 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 	var tasks C.task_array_t
 	var taskCount C.mach_msg_type_number_t
 
-	if C.processor_set_default(c.hport,&pDefaultSet) != C.KERN_SUCCESS {
+	if C.processor_set_default(c.hport, &pDefaultSet) != C.KERN_SUCCESS {
 		return
 	}
 
 	// get privileged port to get information about all tasks
 
 	if C.host_processor_set_priv(C.host_priv_t(c.hport),
-		pDefaultSet,&pDefaultSetControl) != C.KERN_SUCCESS {
+		pDefaultSet, &pDefaultSetControl) != C.KERN_SUCCESS {
 		return
 	}
-
 
 	if C.processor_set_tasks(pDefaultSetControl, &tasks, &taskCount) != C.KERN_SUCCESS {
 		return
@@ -142,8 +139,8 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 	// convert tasks to a Go slice
 	hdr := reflect.SliceHeader{
 		Data: uintptr(unsafe.Pointer(tasks)),
-		Len: int(taskCount),
-		Cap: int(taskCount),
+		Len:  int(taskCount),
+		Cap:  int(taskCount),
 	}
 
 	goTaskList := *(*[]C.task_name_t)(unsafe.Pointer(&hdr))
@@ -160,23 +157,23 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 		var taskBasicInfo C.mach_task_basic_info_data_t
 		var taskAbsoluteInfo C.task_absolutetime_info_data_t
 
-		if (C.pid_for_task(C.mach_port_name_t(taskId),&pid) != C.KERN_SUCCESS) ||
-		   (pid < 0) {
+		if (C.pid_for_task(C.mach_port_name_t(taskId), &pid) != C.KERN_SUCCESS) ||
+			(pid < 0) {
 			continue
 		}
 
 		count = C.MACH_TASK_BASIC_INFO_COUNT
-		kr := C.task_info(taskId, C.MACH_TASK_BASIC_INFO ,
-				  (C.task_info_t)(unsafe.Pointer(&taskBasicInfo)),
-				  &count)
+		kr := C.task_info(taskId, C.MACH_TASK_BASIC_INFO,
+			(C.task_info_t)(unsafe.Pointer(&taskBasicInfo)),
+			&count)
 		if kr != C.KERN_SUCCESS {
 			continue
 		}
 
-		spid := fmt.Sprintf("%v",pid)
+		spid := fmt.Sprintf("%v", pid)
 		pidstat, ok := h[spid]
 		if !ok {
-			pidstat = NewPerProcessStat(c.m,spid)
+			pidstat = NewPerProcessStat(c.m, spid)
 			h[spid] = pidstat
 		}
 
@@ -189,18 +186,17 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 		pidstat.Metrics.ResidentSizeMax.Set(float64(taskBasicInfo.resident_size_max))
 
 		count = C.TASK_ABSOLUTETIME_INFO_COUNT
-		kr = C.task_info(taskId, C.TASK_ABSOLUTETIME_INFO ,
-				  (C.task_info_t)(unsafe.Pointer(&taskAbsoluteInfo)),
-				  &count)
+		kr = C.task_info(taskId, C.TASK_ABSOLUTETIME_INFO,
+			(C.task_info_t)(unsafe.Pointer(&taskAbsoluteInfo)),
+			&count)
 		if kr != C.KERN_SUCCESS {
 			continue
 		}
 		pidstat.Metrics.UserTime.Set(uint64(taskAbsoluteInfo.total_user))
 		pidstat.Metrics.SystemTime.Set(uint64(taskAbsoluteInfo.total_system))
-	        pidstat.Metrics.UpdatedAt.Set(uint64(now - pidstat.Metrics.StartedAt))
+		pidstat.Metrics.UpdatedAt.Set(uint64(now - pidstat.Metrics.StartedAt))
 		pidstat.dead = false
 	}
-
 
 	// remove dead processes
 	for k, v := range h {
@@ -211,16 +207,15 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 
 }
 
-
 // Per Process functions
 type PerProcessStat struct {
-	Pid               string
-	Uid               int
-	User              string
-	Comm              string
-	Metrics  *PerProcessStatMetrics
-	m        *metrics.MetricContext
-	dead	  bool
+	Pid     string
+	Uid     int
+	User    string
+	Comm    string
+	Metrics *PerProcessStatMetrics
+	m       *metrics.MetricContext
+	dead    bool
 }
 
 func NewPerProcessStat(m *metrics.MetricContext, p string) *PerProcessStat {
@@ -243,23 +238,22 @@ func (s *PerProcessStat) MemUsage() float64 {
 }
 
 type PerProcessStatMetrics struct {
-	VirtualSize       *metrics.Gauge
-	ResidentSize      *metrics.Gauge
-	ResidentSizeMax   *metrics.Gauge
-	UserTime          *metrics.Counter
-	SystemTime        *metrics.Counter
-	UpdatedAt         *metrics.Counter
-	StartedAt	  int64
+	VirtualSize     *metrics.Gauge
+	ResidentSize    *metrics.Gauge
+	ResidentSizeMax *metrics.Gauge
+	UserTime        *metrics.Counter
+	SystemTime      *metrics.Counter
+	UpdatedAt       *metrics.Counter
+	StartedAt       int64
 }
 
 func NewPerProcessStatMetrics(m *metrics.MetricContext) *PerProcessStatMetrics {
 	s := new(PerProcessStatMetrics)
 	s.StartedAt = time.Now().UnixNano()
 	// initialize all metrics
-	misc.InitializeMetrics(s,m)
+	misc.InitializeMetrics(s, m)
 	return s
 }
-
 
 func (s *PerProcessStat) CollectAttributes() {
 
