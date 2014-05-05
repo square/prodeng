@@ -17,8 +17,8 @@ import "github.com/square/prodeng/metrics"
 import "C"
 
 type CPUStat struct {
-	All           *CPUStatPerCPU
-	m             *metrics.MetricContext
+	All *CPUStatPerCPU
+	m   *metrics.MetricContext
 }
 
 type CPUStatPerCPU struct {
@@ -28,8 +28,6 @@ type CPUStatPerCPU struct {
 	Idle        *metrics.Counter
 	Total       *metrics.Counter // total ticks
 }
-
-
 
 func New(m *metrics.MetricContext) *CPUStat {
 	c := new(CPUStat)
@@ -49,7 +47,7 @@ func (s *CPUStat) Collect() {
 	// collect CPU stats for All cpus aggregated
 	var cpuinfo C.host_cpu_load_info_data_t
 	count := C.mach_msg_type_number_t(C.HOST_CPU_LOAD_INFO_COUNT)
-	host  := C.mach_host_self()
+	host := C.mach_host_self()
 
 	ret := C.host_statistics(C.host_t(host), C.HOST_CPU_LOAD_INFO,
 		C.host_info_t(unsafe.Pointer(&cpuinfo)), &count)
@@ -63,10 +61,10 @@ func (s *CPUStat) Collect() {
 	s.All.System.Set(uint64(cpuinfo.cpu_ticks[C.CPU_STATE_SYSTEM]))
 	s.All.Idle.Set(uint64(cpuinfo.cpu_ticks[C.CPU_STATE_IDLE]))
 
-	s.All.Total.Set(uint64(cpuinfo.cpu_ticks[C.CPU_STATE_USER])    +
-			uint64(cpuinfo.cpu_ticks[C.CPU_STATE_SYSTEM])  +
-			uint64(cpuinfo.cpu_ticks[C.CPU_STATE_NICE])    +
-			uint64(cpuinfo.cpu_ticks[C.CPU_STATE_IDLE]))
+	s.All.Total.Set(uint64(cpuinfo.cpu_ticks[C.CPU_STATE_USER]) +
+		uint64(cpuinfo.cpu_ticks[C.CPU_STATE_SYSTEM]) +
+		uint64(cpuinfo.cpu_ticks[C.CPU_STATE_NICE]) +
+		uint64(cpuinfo.cpu_ticks[C.CPU_STATE_IDLE]))
 
 }
 
@@ -105,7 +103,6 @@ func (o *CPUStatPerCPU) Usage() float64 {
 	n := o.UserLowPrio.CurRate()
 	s := o.System.CurRate()
 	t := o.Total.CurRate()
-
 
 	if u != math.NaN() && s != math.NaN() && t != math.NaN() && t > 0 {
 		return (u + s + n) / t * 100

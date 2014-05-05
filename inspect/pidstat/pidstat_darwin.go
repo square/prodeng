@@ -7,7 +7,7 @@ import (
 	"github.com/square/prodeng/inspect/misc"
 	"github.com/square/prodeng/metrics"
 	"math"
-	_ "os/user"
+	"os/user"
 	"reflect"
 	"sort"
 	"time"
@@ -18,6 +18,15 @@ import (
 #include <mach/mach.h>
 #include <mach/task_info.h>
 #include <sys/sysctl.h>
+
+int get_process_info(struct kinfo_proc *kp, pid_t pid)
+{
+	size_t len = sizeof(struct kinfo_proc);
+	static int name[] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, 0 };
+	name[3] = pid;
+	kp->kp_proc.p_comm[0] = '\0'; // jic
+	return sysctl((int *)name, sizeof(name)/sizeof(*name), kp, &len, NULL, 0);
+}
 */
 import "C"
 
@@ -178,7 +187,7 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 		}
 
 		if collectAttributes || !ok {
-			pidstat.CollectAttributes()
+			pidstat.CollectAttributes(pid)
 		}
 
 		pidstat.Metrics.VirtualSize.Set(float64(taskBasicInfo.virtual_size))
@@ -255,6 +264,15 @@ func NewPerProcessStatMetrics(m *metrics.MetricContext) *PerProcessStatMetrics {
 	return s
 }
 
-func (s *PerProcessStat) CollectAttributes() {
+func (s *PerProcessStat) CollectAttributes(pid C.int) {
+	// some cgo follows
+	var kp C.struct_kinfo_proc
 
+	C.get_process_info(&kp, C.pid_t(pid))
+	s.Comm = C.GoString((*C.char)(unsafe.Pointer(&kp.kp_proc.p_comm)))
+	s.Uid = int(kp.kp_eproc.e_ucred.cr_uid)
+	u, err := user.LookupId(fmt.Sprintf("%v", s.Uid))
+	if err == nil {
+		s.User = u.Username
+	}
 }
