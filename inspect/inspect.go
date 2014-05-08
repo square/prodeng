@@ -25,14 +25,16 @@ func main() {
 
 	fmt.Println("Gathering statistics......")
 
-	// Initialize a metric context with step 1 second and maximum
-	// history of 3 samples
-	m := metrics.NewMetricContext("system", time.Millisecond*1000*1, 2)
+	// Initialize a metric context
+	m := metrics.NewMetricContext("system")
+
+	// Default step for collectors
+	step := time.Millisecond * 1000
 
 	// Collect cpu/memory/disk/per-pid metrics
-	cstat := cpustat.New(m)
-	mstat := memstat.New(m)
-	procs := pidstat.NewProcessStat(m)
+	cstat := cpustat.New(m, step)
+	mstat := memstat.New(m, step)
+	procs := pidstat.NewProcessStat(m, step)
 
 	// pass the collected metrics to OS dependent set if they
 	// need it
@@ -45,7 +47,7 @@ func main() {
 	// these could be specific to the OS (say cgroups)
 	// or stats which are implemented not on all supported
 	// platforms yet
-	d := osmain.RegisterOsDependent(m, osind)
+	d := osmain.RegisterOsDependent(m, step, osind)
 
 	// Check metrics every 2s
 	ticker := time.NewTicker(time.Millisecond * 1100 * 2)
