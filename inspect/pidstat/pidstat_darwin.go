@@ -14,10 +14,14 @@ import (
 	"unsafe"
 )
 
+// https://developer.apple.com/library/Mac/qa/qa1398/_index.html
+
 /*
 #include <mach/mach.h>
 #include <mach/task_info.h>
+#include <mach/mach_time.h>
 #include <sys/sysctl.h>
+
 
 int get_process_info(struct kinfo_proc *kp, pid_t pid)
 {
@@ -27,8 +31,20 @@ int get_process_info(struct kinfo_proc *kp, pid_t pid)
 	kp->kp_proc.p_comm[0] = '\0'; // jic
 	return sysctl((int *)name, sizeof(name)/sizeof(*name), kp, &len, NULL, 0);
 }
+uint64_t absolute_to_nano(uint64_t abs)
+{
+	static mach_timebase_info_data_t s_timebase_info;
+
+	if (s_timebase_info.denom == 0) {
+		(void) mach_timebase_info(&s_timebase_info);
+	}
+
+        return (uint64_t)((abs * s_timebase_info.numer) / (s_timebase_info.denom));
+}
 */
 import "C"
+
+const NS = 1 * 1000 * 1000 * 1000
 
 type ProcessStat struct {
 	Processes map[string]*PerProcessStat
@@ -47,7 +63,7 @@ type ProcessStat struct {
 //   * Collect metrics for newer processes at faster rate
 //   * Slower rate for processes with neglible rate?
 
-func NewProcessStat(m *metrics.MetricContext) *ProcessStat {
+func NewProcessStat(m *metrics.MetricContext, Step time.Duration) *ProcessStat {
 	c := new(ProcessStat)
 	c.m = m
 
@@ -155,7 +171,6 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 	goTaskList := *(*[]C.task_name_t)(unsafe.Pointer(&hdr))
 
 	// mach_msg_type_number_t - type natural_t = uint32_t
-	now := time.Now().UnixNano()
 	var i uint32
 	for i = 0; i < uint32(taskCount); i++ {
 
@@ -201,9 +216,10 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 		if kr != C.KERN_SUCCESS {
 			continue
 		}
-		pidstat.Metrics.UserTime.Set(uint64(taskAbsoluteInfo.total_user))
-		pidstat.Metrics.SystemTime.Set(uint64(taskAbsoluteInfo.total_system))
-		pidstat.Metrics.UpdatedAt.Set(uint64(now - pidstat.Metrics.StartedAt))
+		pidstat.Metrics.UserTime.Set(
+			uint64(C.absolute_to_nano(taskAbsoluteInfo.total_user)))
+		pidstat.Metrics.SystemTime.Set(
+			uint64(C.absolute_to_nano(taskAbsoluteInfo.total_system)))
 		pidstat.dead = false
 	}
 
@@ -235,10 +251,11 @@ func NewPerProcessStat(m *metrics.MetricContext, p string) *PerProcessStat {
 	return c
 }
 
+// CPUUsage() returns current cpu usage percent, user+system for process
 func (s *PerProcessStat) CPUUsage() float64 {
 	o := s.Metrics
-	t := o.UpdatedAt.ComputeRate()
-	return ((o.UserTime.ComputeRate() + o.SystemTime.ComputeRate()) / t) * 100
+	rate_ns := o.UserTime.ComputeRate() + o.SystemTime.ComputeRate()
+	return (rate_ns / float64(NS)) * 100
 }
 
 func (s *PerProcessStat) MemUsage() float64 {
@@ -264,13 +281,10 @@ type PerProcessStatMetrics struct {
 	ResidentSizeMax *metrics.Gauge
 	UserTime        *metrics.Counter
 	SystemTime      *metrics.Counter
-	UpdatedAt       *metrics.Counter
-	StartedAt       int64
 }
 
 func NewPerProcessStatMetrics(m *metrics.MetricContext) *PerProcessStatMetrics {
 	s := new(PerProcessStatMetrics)
-	s.StartedAt = time.Now().UnixNano()
 	// initialize all metrics
 	misc.InitializeMetrics(s, m)
 	return s

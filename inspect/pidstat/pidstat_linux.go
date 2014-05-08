@@ -27,7 +27,6 @@ import (
 */
 import "C"
 
-
 var LINUX_TICKS_IN_SEC int = int(C.sysconf(C._SC_CLK_TCK))
 
 type ProcessStat struct {

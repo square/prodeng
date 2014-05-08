@@ -4,6 +4,7 @@ import "unsafe"
 import "time"
 import "math"
 import "github.com/square/prodeng/metrics"
+import _ "github.com/square/prodeng/inspect/misc"
 
 // TODO: Per CPU stats - are they available?
 
@@ -29,7 +30,7 @@ type CPUStatPerCPU struct {
 	Total       *metrics.Counter // total ticks
 }
 
-func New(m *metrics.MetricContext) *CPUStat {
+func New(m *metrics.MetricContext, Step time.Duration) *CPUStat {
 	c := new(CPUStat)
 	c.All = CPUStatPerCPUNew(m)
 	c.m = m

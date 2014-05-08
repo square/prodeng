@@ -37,9 +37,9 @@ type MemStat struct {
 	m       *metrics.MetricContext
 }
 
-func New(m *metrics.MetricContext) *MemStat {
+func New(m *metrics.MetricContext, Step time.Duration) *MemStat {
 	s := new(MemStat)
-	s.Metrics = MemStatMetricsNew(m)
+	s.Metrics = MemStatMetricsNew(m, Step)
 	return s
 }
 
@@ -74,7 +74,7 @@ type MemStatMetrics struct {
 	Pagesize  C.vm_size_t
 }
 
-func MemStatMetricsNew(m *metrics.MetricContext) *MemStatMetrics {
+func MemStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MemStatMetrics {
 	c := new(MemStatMetrics)
 
 	// initialize all gauges
@@ -113,4 +113,5 @@ func (s *MemStatMetrics) Collect() {
 	s.Wired.Set(float64(meminfo.wire_count) * float64(s.Pagesize))
 	s.Purgeable.Set(float64(meminfo.purgeable_count) * float64(s.Pagesize))
 	s.Total.Set(float64(C.get_phys_memory()))
+
 }

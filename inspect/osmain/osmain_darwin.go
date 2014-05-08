@@ -4,12 +4,16 @@ package osmain
 
 import (
 	"github.com/square/prodeng/metrics"
+	"time"
 )
 
 type DarwinStats struct {
 }
 
-func RegisterOsDependent(m *metrics.MetricContext, d *OsIndependentStats) *DarwinStats {
+func RegisterOsDependent(
+	m *metrics.MetricContext, step time.Duration,
+	d *OsIndependentStats) *DarwinStats {
+
 	x := new(DarwinStats)
 	return x
 }

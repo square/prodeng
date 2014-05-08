@@ -5,8 +5,6 @@ package osmain
 
 import (
 	"fmt"
-	"time"
-	"path/filepath"
 	"github.com/square/prodeng/inspect/cpustat"
 	"github.com/square/prodeng/inspect/diskstat"
 	"github.com/square/prodeng/inspect/interfacestat"
@@ -14,6 +12,8 @@ import (
 	"github.com/square/prodeng/inspect/misc"
 	"github.com/square/prodeng/inspect/pidstat"
 	"github.com/square/prodeng/metrics"
+	"path/filepath"
+	"time"
 )
 
 type LinuxStats struct {
@@ -28,12 +28,12 @@ type LinuxStats struct {
 func RegisterOsDependent(m *metrics.MetricContext, step time.Duration, d *OsIndependentStats) *LinuxStats {
 
 	s := new(LinuxStats)
-	s.dstat = diskstat.New(m,step)
-	s.ifstat = interfacestat.New(m,step)
+	s.dstat = diskstat.New(m, step)
+	s.ifstat = interfacestat.New(m, step)
 	s.procs = d.Procs // grab it because we need to for per cgroup cpu usage
 	s.cstat = d.Cstat
-	s.cg_mem = memstat.NewCgroupStat(m,step)
-	s.cg_cpu = cpustat.NewCgroupStat(m,step)
+	s.cg_mem = memstat.NewCgroupStat(m, step)
+	s.cg_cpu = cpustat.NewCgroupStat(m, step)
 
 	return s
 }
