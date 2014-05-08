@@ -41,7 +41,7 @@ type Gauge struct {
 // Arguments:
 // namespace - namespace that all metrics in this context belong to
 
-const jiffy = 10
+const jiffy = 100
 
 func NewMetricContext(namespace string) *MetricContext {
 	m := new(MetricContext)
@@ -120,6 +120,12 @@ func (c *Counter) ComputeRate() float64 {
 	delta_v := c.v - c.p
 
 	// handle special cases
+
+	// no updates yet
+	if c.ticks_p == 0 {
+		c.rate = math.NaN()
+		return c.rate
+	}
 
 	// check if our counter stays at zero
 	if c.p == 0 && c.v == 0 {

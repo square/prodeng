@@ -19,13 +19,13 @@ type DiskStat struct {
 	blkdevs map[string]bool
 }
 
-func New(m *metrics.MetricContext) *DiskStat {
+func New(m *metrics.MetricContext, Step time.Duration) *DiskStat {
 	s := new(DiskStat)
 	s.Disks = make(map[string]*PerDiskStat, 6)
 	s.m = m
 	s.RefreshBlkDevList() // perhaps call this once in a while
 
-	ticker := time.NewTicker(m.Step)
+	ticker := time.NewTicker(Step)
 	go func() {
 		for _ = range ticker.C {
 			s.Collect()
@@ -129,5 +129,5 @@ func NewPerDiskStat(m *metrics.MetricContext) *PerDiskStat {
 // (time spent doing IO / wall clock time)
 func (s *PerDiskStat) Usage() float64 {
 	o := s.Metrics
-	return ((o.IOSpentMsecs.CurRate()) / 1000) * 100
+	return ((o.IOSpentMsecs.ComputeRate()) / 1000) * 100
 }

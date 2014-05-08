@@ -21,7 +21,7 @@ type CgroupStat struct {
 	Mountpoint string
 }
 
-func NewCgroupStat(m *metrics.MetricContext) *CgroupStat {
+func NewCgroupStat(m *metrics.MetricContext, Step time.Duration) *CgroupStat {
 	c := new(CgroupStat)
 	c.m = m
 	c.Cgroups = make(map[string]*PerCgroupStat, 1)
@@ -32,7 +32,7 @@ func NewCgroupStat(m *metrics.MetricContext) *CgroupStat {
 	}
 	c.Mountpoint = mountpoint
 
-	ticker := time.NewTicker(m.Step)
+	ticker := time.NewTicker(Step)
 	go func() {
 		for _ = range ticker.C {
 			c.Collect(mountpoint)

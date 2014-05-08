@@ -83,8 +83,8 @@ func MemStatMetricsNew(m *metrics.MetricContext) *MemStatMetrics {
 	host := C.mach_host_self()
 	C.host_page_size(C.host_t(host), &c.Pagesize)
 
-	// collect metrics every m.Step
-	ticker := time.NewTicker(m.Step)
+	// collect metrics every Step
+	ticker := time.NewTicker(Step)
 	go func() {
 		for _ = range ticker.C {
 			c.Collect()

@@ -33,12 +33,12 @@ type CPUStatPerCPU struct {
 	Total       *metrics.Counter // total jiffies
 }
 
-func New(m *metrics.MetricContext) *CPUStat {
+func New(m *metrics.MetricContext, Step time.Duration) *CPUStat {
 	c := new(CPUStat)
 	c.All = CPUStatPerCPUNew(m)
 	c.m = m
 	c.cpus = make(map[string]*CPUStatPerCPU, 1)
-	ticker := time.NewTicker(m.Step)
+	ticker := time.NewTicker(Step)
 	go func() {
 		for _ = range ticker.C {
 			c.Collect()
@@ -124,10 +124,10 @@ func CPUStatPerCPUNew(m *metrics.MetricContext) *CPUStatPerCPU {
 
 // Usage returns total percentage of CPU used
 func (o *CPUStatPerCPU) Usage() float64 {
-	u := o.User.CurRate()
-	n := o.UserLowPrio.CurRate()
-	s := o.System.CurRate()
-	t := o.Total.CurRate()
+	u := o.User.ComputeRate()
+	n := o.UserLowPrio.ComputeRate()
+	s := o.System.ComputeRate()
+	t := o.Total.ComputeRate()
 
 	if u != math.NaN() && n != math.NaN() && s != math.NaN() &&
 		t != math.NaN() && t > 0 {
@@ -140,9 +140,9 @@ func (o *CPUStatPerCPU) Usage() float64 {
 // UserSpace returns percentage of time spent in userspace
 // on this CPU
 func (o *CPUStatPerCPU) UserSpace() float64 {
-	u := o.User.CurRate()
-	n := o.UserLowPrio.CurRate()
-	t := o.Total.CurRate()
+	u := o.User.ComputeRate()
+	n := o.UserLowPrio.ComputeRate()
+	t := o.Total.ComputeRate()
 	if u != math.NaN() && t != math.NaN() && n != math.NaN() && t > 0 {
 		return (u + n) / t * 100
 	}
@@ -152,8 +152,8 @@ func (o *CPUStatPerCPU) UserSpace() float64 {
 // Kernel returns percentage of time spent in kernel
 // on this CPU
 func (o *CPUStatPerCPU) Kernel() float64 {
-	s := o.System.CurRate()
-	t := o.Total.CurRate()
+	s := o.System.ComputeRate()
+	t := o.Total.ComputeRate()
 	if s != math.NaN() && t != math.NaN() && t > 0 {
 		return (s / t) * 100
 	}

@@ -17,7 +17,7 @@ type CgroupStat struct {
 	Mountpoint string
 }
 
-func NewCgroupStat(m *metrics.MetricContext) *CgroupStat {
+func NewCgroupStat(m *metrics.MetricContext, Step time.Duration) *CgroupStat {
 	c := new(CgroupStat)
 	c.m = m
 
@@ -29,7 +29,7 @@ func NewCgroupStat(m *metrics.MetricContext) *CgroupStat {
 	}
 	c.Mountpoint = mountpoint
 
-	ticker := time.NewTicker(m.Step)
+	ticker := time.NewTicker(Step)
 	go func() {
 		for _ = range ticker.C {
 			c.Collect(mountpoint)
@@ -91,7 +91,7 @@ func NewPerCgroupStat(m *metrics.MetricContext, path string) *PerCgroupStat {
 
 func (s *PerCgroupStat) Throttle() float64 {
 	o := s.Metrics
-	throttled_sec := o.Throttled_time.CurRate()
+	throttled_sec := o.Throttled_time.ComputeRate()
 
 	return (throttled_sec / (1 * 1000 * 1000 * 1000)) * 100
 }

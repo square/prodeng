@@ -20,9 +20,9 @@ type MemStat struct {
 	EnableCgroups bool
 }
 
-func New(m *metrics.MetricContext) *MemStat {
+func New(m *metrics.MetricContext, Step time.Duration) *MemStat {
 	s := new(MemStat)
-	s.Metrics = MemStatMetricsNew(m)
+	s.Metrics = MemStatMetricsNew(m, Step)
 	return s
 }
 
@@ -89,7 +89,7 @@ type MemStatMetrics struct {
 	DirectMap2M       *metrics.Gauge
 }
 
-func MemStatMetricsNew(m *metrics.MetricContext) *MemStatMetrics {
+func MemStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MemStatMetrics {
 	c := new(MemStatMetrics)
 
 	// initialize all gauges
@@ -102,8 +102,8 @@ func MemStatMetricsNew(m *metrics.MetricContext) *MemStatMetrics {
 		}
 	}
 
-	// collect metrics every m.Step
-	ticker := time.NewTicker(m.Step)
+	// collect metrics every Step
+	ticker := time.NewTicker(Step)
 	go func() {
 		for _ = range ticker.C {
 			c.Collect()

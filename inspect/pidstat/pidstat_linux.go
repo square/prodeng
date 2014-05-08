@@ -27,6 +27,9 @@ import (
 */
 import "C"
 
+
+var LINUX_TICKS_IN_SEC int = int(C.sysconf(C._SC_CLK_TCK))
+
 type ProcessStat struct {
 	Mountpoint string
 	m          *metrics.MetricContext
@@ -37,21 +40,21 @@ type ProcessStat struct {
 // Arguments:
 // m - *metricContext
 
-// Collects metrics every m.Step seconds
-// Drops refresh interval by m.Step for every additional
+// Collects metrics every Step seconds
+// Drops refresh interval by Step for every additional
 // 1024 processes
 // TODO: Implement better heuristics to manage load
 //   * Collect metrics for newer processes at faster rate
 //   * Slower rate for processes with neglible rate?
 
-func NewProcessStat(m *metrics.MetricContext) *ProcessStat {
+func NewProcessStat(m *metrics.MetricContext, Step time.Duration) *ProcessStat {
 	c := new(ProcessStat)
 	c.m = m
 
 	c.Processes = make(map[string]*PerProcessStat, 1024)
 
 	var n int
-	ticker := time.NewTicker(m.Step)
+	ticker := time.NewTicker(Step)
 	go func() {
 		for _ = range ticker.C {
 			p := int(len(c.Processes) / 1024)
@@ -208,8 +211,9 @@ func NewPerProcessStat(m *metrics.MetricContext, p string) *PerProcessStat {
 
 func (s *PerProcessStat) CPUUsage() float64 {
 	o := s.Metrics
-	t := (o.UpdatedAt.CurRate() / float64(time.Second.Nanoseconds()))
-	return (o.Utime.CurRate() + o.Stime.CurRate()) / t
+	rate_per_sec := (o.Utime.ComputeRate() + o.Stime.ComputeRate())
+	pct_use := (rate_per_sec * 100) / float64(LINUX_TICKS_IN_SEC)
+	return pct_use
 }
 
 func (s *PerProcessStat) MemUsage() float64 {

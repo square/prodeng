@@ -17,12 +17,12 @@ type InterfaceStat struct {
 	m          *metrics.MetricContext
 }
 
-func New(m *metrics.MetricContext) *InterfaceStat {
+func New(m *metrics.MetricContext, Step time.Duration) *InterfaceStat {
 	s := new(InterfaceStat)
 	s.Interfaces = make(map[string]*PerInterfaceStat, 4)
 	s.m = m
 
-	ticker := time.NewTicker(m.Step)
+	ticker := time.NewTicker(Step)
 	go func() {
 		for _ = range ticker.C {
 			s.Collect()
@@ -117,11 +117,11 @@ func NewPerInterfaceStat(m *metrics.MetricContext) *PerInterfaceStat {
 // Transmit bandwidth utilization in bits/sec
 func (s *PerInterfaceStat) RXBandwidth() float64 {
 	o := s.Metrics
-	return (o.RXbytes.CurRate()) * 8
+	return (o.RXbytes.ComputeRate()) * 8
 }
 
 // Recieve bandwidth utilization in bits/sec
 func (s *PerInterfaceStat) TXBandwidth() float64 {
 	o := s.Metrics
-	return (o.TXbytes.CurRate()) * 8
+	return (o.TXbytes.ComputeRate()) * 8
 }

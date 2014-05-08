@@ -40,8 +40,8 @@ type ProcessStat struct {
 // Arguments:
 // m - *metricContext
 
-// Collects metrics every m.Step seconds
-// Drops refresh interval by m.Step for every additional
+// Collects metrics every Step seconds
+// Drops refresh interval by Step for every additional
 // 1024 processes
 // TODO: Implement better heuristics to manage load
 //   * Collect metrics for newer processes at faster rate
@@ -55,7 +55,7 @@ func NewProcessStat(m *metrics.MetricContext) *ProcessStat {
 	c.hport = C.host_t(C.mach_host_self())
 
 	var n int
-	ticker := time.NewTicker(m.Step)
+	ticker := time.NewTicker(Step)
 	go func() {
 		for _ = range ticker.C {
 			p := int(len(c.Processes) / 1024)
@@ -237,8 +237,8 @@ func NewPerProcessStat(m *metrics.MetricContext, p string) *PerProcessStat {
 
 func (s *PerProcessStat) CPUUsage() float64 {
 	o := s.Metrics
-	t := o.UpdatedAt.CurRate()
-	return ((o.UserTime.CurRate() + o.SystemTime.CurRate()) / t) * 100
+	t := o.UpdatedAt.ComputeRate()
+	return ((o.UserTime.ComputeRate() + o.SystemTime.ComputeRate()) / t) * 100
 }
 
 func (s *PerProcessStat) MemUsage() float64 {
