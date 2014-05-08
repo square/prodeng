@@ -41,6 +41,7 @@ func TestCounterRateNoChange(t *testing.T) {
 	m := NewMetricContext("testing")
 	c := m.NewCounter("testcounter")
 	c.Set(0)
+	time.Sleep(time.Millisecond*100)
 	c.Set(0)
 	want := 0.0
 	out := c.ComputeRate()

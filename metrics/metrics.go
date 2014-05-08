@@ -122,7 +122,7 @@ func (c *Counter) ComputeRate() float64 {
 	// handle special cases
 
 	// no updates yet
-	if c.ticks_p == 0 {
+	if c.ticks_v == 0 {
 		c.rate = math.NaN()
 		return c.rate
 	}
