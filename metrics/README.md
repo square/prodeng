@@ -1,29 +1,26 @@
 ###### Example API use
 
 ```go
-// Initialize a metric context with step 1 second and maximum
-// history of 3 samples
-m := metrics.NewMetricContext("system", time.Millisecond*1000*1, 3)
+// Initialize a metric context
+m := metrics.NewMetricContext("system")
 
 // Create a new counter
+// Add/Set operations are atomic
+// No locks are held for counter operations
 c := metrics.NewCounter(m)
 
-c.V++ // increment counter
-c.Inc() // increment counter
-c.UpdateStats() // store current sample in history
-c.Set(20) // Set counter value
-c.CurRate() // calculate rate of change with respect to time
+c.Add(n)    // increment counter by delta n
+c.Set(n)    // Set counter value to n
+
+r := c.ComputeRate() // compute rate of change/sec
 
 // Create a new gauge
+// Set/Get acquire a mutex
 c := metrics.NewGauge(m)
 c.Set(12.0) // Set Value
-c.V // get Value
+c.Get() // get Value
 ```
 
 
 ###### TODO
-
-1. Cleanup API - there are bunch of inconsistencies.
-2. Add support for basic statistics that are cheap to
-   calculate at runtime
-3. Remove locks where not needed
+1. Add support for Timers; see netflix servo for examples
