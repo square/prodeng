@@ -6,6 +6,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/mgutz/ansi"
 	"github.com/square/prodeng/inspect/cpustat"
 	"github.com/square/prodeng/inspect/memstat"
 	"github.com/square/prodeng/inspect/misc"
@@ -15,6 +16,8 @@ import (
 	"time"
 )
 
+const DISPLAY_PID_COUNT = 5
+
 func main() {
 	// options
 	var batchmode bool
@@ -23,7 +26,9 @@ func main() {
 	flag.BoolVar(&batchmode, "batchmode", false, "Run in batch mode; suitable for parsing")
 	flag.Parse()
 
-	fmt.Println("Gathering statistics......")
+	if !batchmode {
+		fmt.Println("Gathering statistics......")
+	}
 
 	// Initialize a metric context
 	m := metrics.NewMetricContext("system")
@@ -35,6 +40,31 @@ func main() {
 	cstat := cpustat.New(m, step)
 	mstat := memstat.New(m, step)
 	procs := pidstat.NewProcessStat(m, step)
+
+	// Filter processes which have < 1% CPU or < 1% memory
+	// and try to keep minimum of 5
+
+	n := 0
+	procs.SetPidFilter(pidstat.PidFilterFunc(func(p *pidstat.PerProcessStat) bool {
+
+		switch {
+		case n < DISPLAY_PID_COUNT:
+			return true
+		case n == DISPLAY_PID_COUNT:
+			n = 0
+		default:
+			n++
+		}
+
+		if p.CPUUsage() > 1.0 {
+			return true
+		}
+		memUsagePct := (p.MemUsage() / mstat.Total()) * 100.0
+		if memUsagePct > 1.0 {
+			return true
+		}
+		return false
+	}))
 
 	// pass the collected metrics to OS dependent set if they
 	// need it
@@ -52,20 +82,34 @@ func main() {
 	// Check metrics every 2s
 	ticker := time.NewTicker(time.Millisecond * 1100 * 2)
 	for _ = range ticker.C {
+
+		// Problems
+		var problems []string
+
 		if !batchmode {
 			fmt.Printf("\033[2J") // clear screen
 			fmt.Printf("\033[H")  // move cursor top left top
 		}
+
 		fmt.Println("--------------------------")
+		mem_pct_usage := (mstat.Usage() / mstat.Total()) * 100
 		fmt.Printf(
 			"total: cpu: %3.1f%%, mem: %3.1f%% (%s/%s)\n",
-			cstat.Usage(), (mstat.Usage()/mstat.Total())*100,
+			cstat.Usage(), mem_pct_usage,
 			misc.ByteSize(mstat.Usage()), misc.ByteSize(mstat.Total()))
+
+		if cstat.Usage() > 80.0 {
+			problems = append(problems, "CPU usage > 80%")
+		}
+
+		if mem_pct_usage > 80.0 {
+			problems = append(problems, "Memory usage > 80%")
+		}
 
 		// Top processes by usage
 		procs_by_usage := procs.ByCPUUsage()
 		fmt.Println("Top processes by CPU usage:")
-		n := 5
+		n := DISPLAY_PID_COUNT
 		if len(procs_by_usage) < n {
 			n = len(procs_by_usage)
 		}
@@ -81,7 +125,7 @@ func main() {
 		fmt.Println("---")
 		procs_by_usage = procs.ByMemUsage()
 		fmt.Println("Top processes by Mem usage:")
-		n = 5
+		n = DISPLAY_PID_COUNT
 		if len(procs_by_usage) < n {
 			n = len(procs_by_usage)
 		}
@@ -94,6 +138,15 @@ func main() {
 				procs_by_usage[i].Pid())
 		}
 
-		osmain.PrintOsDependent(d)
+		osmain.PrintOsDependent(d, batchmode)
+
+		for i := range problems {
+			msg := problems[i]
+			if !batchmode {
+				msg = ansi.Color(msg, "red")
+			}
+			fmt.Println("Problem: ", msg)
+		}
+
 	}
 }

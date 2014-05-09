@@ -25,14 +25,15 @@ func TestCounterRate(t *testing.T) {
 			c.Add(1)
 		}
 	}()
-	time.Sleep(time.Millisecond * 10000)
+
+	time.Sleep(time.Millisecond * 5000)
 	tick1.Stop()
 	tick2.Stop()
 
-	want := 200
-	out := int(c.ComputeRate())
+	want := 200.0
+	out := c.ComputeRate()
 
-	if want != out {
+	if math.Abs(want - out) > 1 {
 		t.Errorf("c.ComputeRate() = %v, want %v", out, want)
 	}
 }

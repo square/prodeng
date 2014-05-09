@@ -18,5 +18,5 @@ func RegisterOsDependent(
 	return x
 }
 
-func PrintOsDependent(d *DarwinStats) {
+func PrintOsDependent(d *DarwinStats, batchmode bool) {
 }

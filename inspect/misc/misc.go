@@ -172,3 +172,15 @@ func (b BitSize) String() string {
 	}
 	return fmt.Sprintf("%.2fb", b)
 }
+
+const (
+	CGROUP_BLKIO uint8 = iota
+	CGROUP_CPU
+	CGROUP_CPUACCT
+	CGROUP_CPUSET
+	CGROUP_DEVICES
+	CGROUP_FREEZER
+	CGROUP_MEMORY
+	CGROUP_NET_CLS
+	CGROUP_NS
+)
