@@ -50,6 +50,7 @@ func NewMetricContext(namespace string) *MetricContext {
 	m.Gauges = make(map[string]*Gauge)
 
 	// TODO: make this configurable
+	m.ticks = 1
 	ticker := time.NewTicker(time.Millisecond * jiffy)
 	go func() {
 		for _ = range ticker.C {
@@ -122,7 +123,7 @@ func (c *Counter) ComputeRate() float64 {
 	// handle special cases
 
 	// no updates yet
-	if c.ticks_v == 0 {
+	if c.ticks_p == 0 {
 		c.rate = math.NaN()
 		return c.rate
 	}
