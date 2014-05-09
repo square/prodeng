@@ -4,20 +4,16 @@ package pidstat
 
 import (
 	"bufio"
-	"os"
-	// "math/rand"
-	//"regexp"
-	"fmt"
+	"errors"
 	"github.com/square/prodeng/inspect/misc"
 	"github.com/square/prodeng/metrics"
 	"io/ioutil"
 	"math"
+	"os"
 	"os/user"
 	"path"
 	"regexp"
-	"sort"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -28,20 +24,22 @@ import (
 import "C"
 
 var LINUX_TICKS_IN_SEC int = int(C.sysconf(C._SC_CLK_TCK))
-
-type ProcessStat struct {
-	Mountpoint string
-	m          *metrics.MetricContext
-	Processes  map[string]*PerProcessStat
-}
+var PAGESIZE int = int(C.sysconf(C._SC_PAGESIZE))
 
 // NewProcessStat allocates a new ProcessStat object
 // Arguments:
 // m - *metricContext
+// Step - time.Duration
+
+type ProcessStat struct {
+	Processes map[string]*PerProcessStat
+	m         *metrics.MetricContext
+	x         []*PerProcessStat
+	filter    PidFilterFunc
+}
 
 // Collects metrics every Step seconds
-// Drops refresh interval by Step for every additional
-// 1024 processes
+// Sleeps an additional 1s for every 1024 processes
 // TODO: Implement better heuristics to manage load
 //   * Collect metrics for newer processes at faster rate
 //   * Slower rate for processes with neglible rate?
@@ -50,67 +48,32 @@ func NewProcessStat(m *metrics.MetricContext, Step time.Duration) *ProcessStat {
 	c := new(ProcessStat)
 	c.m = m
 
-	c.Processes = make(map[string]*PerProcessStat, 1024)
+	c.Processes = make(map[string]*PerProcessStat, 64)
 
-	var n int
+	// pool for PerProcessStat objects
+	// stupid trick to avoid depending on GC to free up
+	// temporary pool
+	c.x = make([]*PerProcessStat, 1024)
+	for i, _ := range c.x {
+		c.x[i] = NewPerProcessStat(m, "")
+	}
+
+	// Assign a default filter for pids
+	c.filter = PidFilterFunc(defaultPidFilter)
+
 	ticker := time.NewTicker(Step)
 	go func() {
 		for _ = range ticker.C {
-			p := int(len(c.Processes) / 1024)
-			if n == 0 {
-				c.Collect(true)
-			}
-			// always collect all metrics for first two samples
-			// and if number of processes < 1024
-			if p < 1 || n%p == 0 {
-				c.Collect(false)
-			}
-			n++
+			c.Collect()
 		}
 	}()
 
 	return c
 }
 
-// ByCPUUsage implements sort.Interface for []*PerProcessStat based on
-// the Usage() method
-
-type ByCPUUsage []*PerProcessStat
-
-func (a ByCPUUsage) Len() int           { return len(a) }
-func (a ByCPUUsage) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByCPUUsage) Less(i, j int) bool { return a[i].CPUUsage() > a[j].CPUUsage() }
-
-// ByCPUUsage() returns an slice of *PerProcessStat entries sorted
-// by CPU usage
-func (c *ProcessStat) ByCPUUsage() []*PerProcessStat {
-	v := make([]*PerProcessStat, 0)
-	for _, o := range c.Processes {
-		if !math.IsNaN(o.CPUUsage()) {
-			v = append(v, o)
-		}
-	}
-	sort.Sort(ByCPUUsage(v))
-	return v
-}
-
-type ByMemUsage []*PerProcessStat
-
-func (a ByMemUsage) Len() int           { return len(a) }
-func (a ByMemUsage) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByMemUsage) Less(i, j int) bool { return a[i].MemUsage() > a[j].MemUsage() }
-
-// ByMemUsage() returns an slice of *PerProcessStat entries sorted
-// by Memory usage
-func (c *ProcessStat) ByMemUsage() []*PerProcessStat {
-	v := make([]*PerProcessStat, 0)
-	for _, o := range c.Processes {
-		if !math.IsNaN(o.MemUsage()) {
-			v = append(v, o)
-		}
-	}
-	sort.Sort(ByMemUsage(v))
-	return v
+func (s *ProcessStat) SetPidFilter(filter PidFilterFunc) {
+	s.filter = filter
+	return
 }
 
 // CPUUsagePerCgroup returns cumulative CPU usage by cgroup
@@ -121,21 +84,21 @@ func (c *ProcessStat) CPUUsagePerCgroup(cgroup string) float64 {
 	}
 
 	for _, o := range c.Processes {
-		if (o.Metrics.Cgroup["cpu"] == cgroup) && !math.IsNaN(o.CPUUsage()) {
+		if (o.Cgroup("cpu") == cgroup) && !math.IsNaN(o.CPUUsage()) {
 			ret += o.CPUUsage()
 		}
 	}
 	return ret
 }
 
-// MemUsagePerCgroup returns cumulative Memory usage by cgroup
+// MemUsagePerCgroup(cgroup_name) returns cumulative Memory usage by cgroup
 func (c *ProcessStat) MemUsagePerCgroup(cgroup string) float64 {
 	var ret float64
 	if !path.IsAbs(cgroup) {
 		cgroup = "/" + cgroup
 	}
 	for _, o := range c.Processes {
-		if (o.Metrics.Cgroup["memory"] == cgroup) && !math.IsNaN(o.MemUsage()) {
+		if (o.Cgroup("memory") == cgroup) && !math.IsNaN(o.MemUsage()) {
 			ret += o.MemUsage()
 		}
 	}
@@ -145,10 +108,7 @@ func (c *ProcessStat) MemUsagePerCgroup(cgroup string) float64 {
 // Collect walks through /proc and updates stats
 // Collect is usually called internally based on
 // parameters passed via metric context
-// Takes a single boolean parameter which specifies
-// if we should collect/refresh all process attributes
-
-func (c *ProcessStat) Collect(collectAttributes bool) {
+func (c *ProcessStat) Collect() {
 	h := c.Processes
 	for _, v := range h {
 		v.Metrics.dead = true
@@ -159,26 +119,28 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 		return
 	}
 
-	pidre := regexp.MustCompile("^\\d+")
+	// scan 1024 processes at once to pick out the ones
+	// that are interesting
 
-	for _, f := range pids {
-		p := f.Name()
-		st := f.Sys()
-		if f.IsDir() && pidre.MatchString(p) {
-			pidstat, ok := h[p]
-			if !ok {
-				pidstat = NewPerProcessStat(c.m, path.Base(p))
-				h[p] = pidstat
-			}
-			pidstat.Metrics.Collect()
-			pidstat.Metrics.dead = false
+	for start_idx := 0; start_idx < len(pids); start_idx += 1024 {
+		end_idx := start_idx + 1024
+		if end_idx > len(pids) {
+			end_idx = len(pids)
+		}
 
-			// collect other process attributes like uid,gid,cgroup
-			// etc only for new processes or when run for the first
-			// time
-			if collectAttributes || !ok && st != nil {
-				pidstat.Metrics.populateId(st)
-				pidstat.Metrics.CollectAttributes()
+		for _, pidstat := range c.x {
+			pidstat.Reset("?")
+		}
+
+		c.scanProc(&pids, start_idx, end_idx)
+		time.Sleep(time.Millisecond * 1000)
+		c.scanProc(&pids, start_idx, end_idx)
+
+		for i, pidstat := range c.x {
+			if c.filter(pidstat) {
+				h[pidstat.Pid()] = pidstat
+				c.x[i] = NewPerProcessStat(c.m, "")
+				pidstat.Metrics.dead = false
 			}
 		}
 	}
@@ -189,23 +151,39 @@ func (c *ProcessStat) Collect(collectAttributes bool) {
 			delete(h, k)
 		}
 	}
+
+}
+
+// unexported
+func (c *ProcessStat) scanProc(pids *[]os.FileInfo, start_idx int, end_idx int) {
+
+	pidre := regexp.MustCompile("^\\d+")
+	for i := start_idx; i < end_idx; i++ {
+		f := (*pids)[i]
+		p := f.Name()
+		if f.IsDir() && pidre.MatchString(p) {
+			pidstat := c.x[i%1024]
+			pidstat.Metrics.Pid = p
+			pidstat.Metrics.Collect()
+		}
+	}
 }
 
 // Per Process functions
 type PerProcessStat struct {
-	Metrics  *PerProcessStatMetrics
-	m        *metrics.MetricContext
-	pagesize int64
+	Metrics *PerProcessStatMetrics
+	m       *metrics.MetricContext
 }
 
 func NewPerProcessStat(m *metrics.MetricContext, p string) *PerProcessStat {
-	c := new(PerProcessStat)
-	c.m = m
-	c.Metrics = NewPerProcessStatMetrics(m, p)
+	s := new(PerProcessStat)
+	s.m = m
+	s.Metrics = NewPerProcessStatMetrics(m, p)
+	return s
+}
 
-	c.pagesize = int64(C.sysconf(C._SC_PAGESIZE))
-
-	return c
+func (s *PerProcessStat) Reset(p string) {
+	s.Metrics.Reset(p)
 }
 
 func (s *PerProcessStat) CPUUsage() float64 {
@@ -217,7 +195,7 @@ func (s *PerProcessStat) CPUUsage() float64 {
 
 func (s *PerProcessStat) MemUsage() float64 {
 	o := s.Metrics
-	return o.Rss.Get() * float64(s.pagesize)
+	return o.Rss.Get() * float64(PAGESIZE)
 }
 
 func (s *PerProcessStat) Pid() string {
@@ -225,36 +203,114 @@ func (s *PerProcessStat) Pid() string {
 }
 
 func (s *PerProcessStat) Comm() string {
-	return s.Metrics.Comm
+	file, err := os.Open("/proc/" + s.Metrics.Pid + "/stat")
+	defer file.Close()
+
+	if err != nil {
+		return ""
+	}
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		f := strings.Split(scanner.Text(), " ")
+		return f[1]
+	}
+
+	return ""
+}
+
+func (s *PerProcessStat) Euid() (string, error) {
+	file, err := os.Open("/proc/" + s.Metrics.Pid + "/status")
+	defer file.Close()
+
+	if err != nil {
+		return "", err
+	}
+
+	splitre := regexp.MustCompile("\\s+")
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		f := splitre.Split(scanner.Text(), -1)
+		if f[0] == "Uid:" {
+			return f[2], nil // effective uid
+		}
+	}
+
+	return "", errors.New("unable to determine euid")
+}
+
+func (s *PerProcessStat) Egid() (string, error) {
+	file, err := os.Open("/proc/" + s.Metrics.Pid + "/status")
+	defer file.Close()
+
+	if err != nil {
+		return "", err
+	}
+
+	splitre := regexp.MustCompile("\\s+")
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		f := splitre.Split(scanner.Text(), -1)
+		if f[0] == "Gid:" {
+			return f[2], nil // effective gid
+		}
+	}
+
+	return "", errors.New("unable to determine egid")
 }
 
 func (s *PerProcessStat) User() string {
-	return s.Metrics.User
+	euid, err := s.Euid()
+
+	if err != nil {
+		return "?"
+	}
+
+	u, err := user.LookupId(euid)
+	if err != nil {
+		return "?"
+	}
+
+	return u.Username
+}
+
+func (s *PerProcessStat) Cmdline() string {
+	content, err := ioutil.ReadFile("/proc/" + s.Metrics.Pid + "/cmdline")
+	if err != nil {
+		return string(content)
+	}
+
+	return ""
+}
+
+func (s *PerProcessStat) Cgroup(subsys string) string {
+	file, err := os.Open("/proc/" + s.Metrics.Pid + "/cgroup")
+	defer file.Close()
+
+	if err == nil {
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			f := strings.Split(scanner.Text(), ":")
+			if f[1] == subsys {
+				return f[2]
+			}
+		}
+	}
+
+	return "/"
 }
 
 type PerProcessStatMetrics struct {
-	Pid       string
-	Comm      string
-	Cmdline   string
-	Cgroup    map[string]string
-	Uid       uint32
-	Gid       uint32
-	User      string
-	Majflt    *metrics.Counter
-	Utime     *metrics.Counter
-	Stime     *metrics.Counter
-	UpdatedAt *metrics.Counter
-	StartedAt int64
-	Rss       *metrics.Gauge
-	pid       string
-	dead      bool
+	Pid   string
+	Utime *metrics.Counter
+	Stime *metrics.Counter
+	Rss   *metrics.Gauge
+	dead  bool
 }
 
 func NewPerProcessStatMetrics(m *metrics.MetricContext, pid string) *PerProcessStatMetrics {
 	s := new(PerProcessStatMetrics)
-	s.pid = pid
-
-	s.StartedAt = time.Now().UnixNano()
+	s.Pid = pid
 
 	// initialize all metrics
 	misc.InitializeMetrics(s, m)
@@ -262,59 +318,26 @@ func NewPerProcessStatMetrics(m *metrics.MetricContext, pid string) *PerProcessS
 	return s
 }
 
+func (s *PerProcessStatMetrics) Reset(pid string) {
+	s.Pid = pid
+	s.Utime.Reset()
+	s.Stime.Reset()
+	s.Rss.Reset()
+}
+
 func (s *PerProcessStatMetrics) Collect() {
-	file, err := os.Open("/proc/" + s.pid + "/stat")
+	file, err := os.Open("/proc/" + s.Pid + "/stat")
 	defer file.Close()
 
 	if err != nil {
 		return
 	}
 
-	now := time.Now().UnixNano()
-	if now-s.StartedAt < 0 {
-		return
-	}
-
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		f := strings.Split(scanner.Text(), " ")
-		s.Pid = f[0]
-		s.Comm = f[1]
-		s.Majflt.Set(misc.ParseUint(f[11]))
 		s.Utime.Set(misc.ParseUint(f[13]))
 		s.Stime.Set(misc.ParseUint(f[14]))
 		s.Rss.Set(float64(misc.ParseUint(f[23])))
-	}
-
-	s.UpdatedAt.Set(uint64(time.Now().UnixNano() - s.StartedAt))
-}
-
-func (s *PerProcessStatMetrics) CollectAttributes() {
-	content, err := ioutil.ReadFile("/proc/" + s.pid + "/cmdline")
-	if err == nil {
-		s.Cmdline = string(content)
-	}
-
-	file, err := os.Open("/proc/" + s.pid + "/cgroup")
-	defer file.Close()
-
-	if err == nil {
-		t := make(map[string]string)
-		scanner := bufio.NewScanner(file)
-		for scanner.Scan() {
-			f := strings.Split(scanner.Text(), ":")
-			t[f[1]] = f[2]
-		}
-		s.Cgroup = t
-	}
-}
-
-// unexported
-func (s *PerProcessStatMetrics) populateId(st interface{}) {
-	s.Uid = st.(*syscall.Stat_t).Uid
-	s.Gid = st.(*syscall.Stat_t).Gid
-	u, err := user.LookupId(fmt.Sprintf("%v", s.Uid))
-	if err == nil {
-		s.User = u.Username
 	}
 }

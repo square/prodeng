@@ -102,6 +102,9 @@ func MemStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MemStatMet
 		}
 	}
 
+	// collect once
+	c.Collect()
+
 	// collect metrics every Step
 	ticker := time.NewTicker(Step)
 	go func() {
