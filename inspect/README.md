@@ -89,7 +89,7 @@ m := metrics.NewMetricContext("system")
 cstat := cpustat.New(m,  time.Millisecond*1000)
 
 // Allow two samples to be collected. Since most metrics are counters.
-time.Sleep(time.Millisecond * 3)
+time.Sleep(time.Millisecond * 1000 * 3)
 fmt.Println(cstat.Usage())
 
 ```
