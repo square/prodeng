@@ -45,30 +45,33 @@ http://godoc.org/github.com/square/prodeng/metrics
 
 ```
 --------------------------
-total: cpu: 34.0%, mem: 92.2% (43.45GB/47.13GB)
----
+total: cpu: 100.0%, mem: 9.9% (379.86MB/3.74GB)
 Top processes by CPU usage:
-cpu: 99.3%  command: (carbon-cache.py) user: apache pid: 15986
-cpu: 98.9%  command: (carbon-cache.py) user: apache pid: 31571
-cpu: 54.9%  command: (carbon-relay.py) user: apache pid: 1860
-cpu: 52.9%  command: (carbon-relay.py) user: apache pid: 1855
-cpu: 49.8%  command: (carbon-relay.py) user: apache pid: 1882
+cpu: 65.7%  command: (perl) user: s pid: 23140
+cpu: 14.9%  command: (fio) user: s pid: 23214
+cpu: 10.0%  command: (perl) user: root pid: 23162
+cpu: 6.0%  command: (fio) user: s pid: 23212
+cpu: 3.0%  command: (inspect) user: s pid: 23116
 ---
 Top processes by Mem usage:
-mem: 26.27GB command: (carbon-cache.py) user: apache pid: 15986
-mem: 15.91GB command: (carbon-cache.py) user: apache pid: 31571
-mem: 49.41MB command: (node) user: apache pid: 1863
-mem: 48.10MB command: (node) user: apache pid: 1852
-mem: 26.34MB command: (carbon-relay.py) user: apache pid: 1884
---
-disk: sda usage: 0.5%
+mem: 16.68MB command: (fio) user: s pid: 23212
+mem: 11.36MB command: (tmux) user: s pid: 29769
+mem: 10.97MB command: (bash) user: s pid: 15146
+mem: 7.95MB command: (zsh) user: s pid: 13572
+mem: 7.34MB command: (bash) user: s pid: 6478
 ---
-iface: lo TX: 22.45Mb/s, RX: 22.45Mb/s
-iface: eth0 TX: 0.00b/s, RX: 0.00b/s
-iface: eth1 TX: 17.07Mb/s, RX: 24.46Mb/s
-iface: bond0 TX: 17.07Mb/s, RX: 24.46Mb/s
---
-cgroup:syam_test cpu: 9.9% cpu_throttling: 89.7% (0.1/16) mem: 0.0% (316.00KB/1.00GB)
+disk: sr0 usage: 0.0%
+disk: sda usage: 0.0%
+disk: sdb usage: 92.7%
+---
+iface: lo TX: 0.00b/s, RX: 0.00b/s
+iface: eth0 TX: 6.77Kb/s, RX: 1.03Kb/s
+---
+cgroup:small cpu: 10.0% cpu_throttling: 79.6% (0.1/1) mem: 0.1% (308.00KB/409.60MB)
+---
+Problem:  Disk usage on (sdb): 92.7%
+Problem:  CPU throttling on cgroup(small): 79.6%
+Problem:  CPU usage > 80%
 ```
 
 ###### Example API use 
