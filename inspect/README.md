@@ -60,16 +60,16 @@ mem: 10.97MB command: (bash) user: s pid: 15146
 mem: 7.95MB command: (zsh) user: s pid: 13572
 mem: 7.34MB command: (bash) user: s pid: 6478
 ---
-disk: sr0 usage: 0.0%
-disk: sda usage: 0.0%
-disk: sdb usage: 92.7%
+diskio: sr0 usage: 0.0%
+diskio: sda usage: 0.0%
+diskio: sdb usage: 92.7%
 ---
 iface: lo TX: 0.00b/s, RX: 0.00b/s
 iface: eth0 TX: 6.77Kb/s, RX: 1.03Kb/s
 ---
 cgroup:small cpu: 10.0% cpu_throttling: 79.6% (0.1/1) mem: 0.1% (308.00KB/409.60MB)
 ---
-Problem:  Disk usage on (sdb): 92.7%
+Problem:  Disk IO usage on (sdb): 92.7%
 Problem:  CPU throttling on cgroup(small): 79.6%
 Problem:  CPU usage > 80%
 ```
