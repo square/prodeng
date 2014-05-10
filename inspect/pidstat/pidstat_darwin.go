@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"github.com/square/prodeng/inspect/misc"
 	"github.com/square/prodeng/metrics"
-	"math"
 	"os/user"
 	"reflect"
-	"sort"
 	"time"
 	"unsafe"
 )
@@ -90,45 +88,9 @@ func NewProcessStat(m *metrics.MetricContext, Step time.Duration) *ProcessStat {
 	return c
 }
 
-// ByCPUUsage implements sort.Interface for []*PerProcessStat based on
-// the Usage() method
-
-type ByCPUUsage []*PerProcessStat
-
-func (a ByCPUUsage) Len() int           { return len(a) }
-func (a ByCPUUsage) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByCPUUsage) Less(i, j int) bool { return a[i].CPUUsage() > a[j].CPUUsage() }
-
-// ByCPUUsage() returns an slice of *PerProcessStat entries sorted
-// by CPU usage
-func (c *ProcessStat) ByCPUUsage() []*PerProcessStat {
-	v := make([]*PerProcessStat, 0)
-	for _, o := range c.Processes {
-		if !math.IsNaN(o.CPUUsage()) {
-			v = append(v, o)
-		}
-	}
-	sort.Sort(ByCPUUsage(v))
-	return v
-}
-
-type ByMemUsage []*PerProcessStat
-
-func (a ByMemUsage) Len() int           { return len(a) }
-func (a ByMemUsage) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByMemUsage) Less(i, j int) bool { return a[i].MemUsage() > a[j].MemUsage() }
-
-// ByMemUsage() returns an slice of *PerProcessStat entries sorted
-// by Memory usage
-func (c *ProcessStat) ByMemUsage() []*PerProcessStat {
-	v := make([]*PerProcessStat, 0)
-	for _, o := range c.Processes {
-		if !math.IsNaN(o.MemUsage()) {
-			v = append(v, o)
-		}
-	}
-	sort.Sort(ByMemUsage(v))
-	return v
+// not implemented on darwin
+func (s *ProcessStat) SetPidFilter(filter PidFilterFunc) {
+	return
 }
 
 // reference /usr/include/mach/task_info.h

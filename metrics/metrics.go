@@ -14,15 +14,15 @@ type MetricContext struct {
 	namespace string
 	Counters  map[string]*Counter
 	Gauges    map[string]*Gauge
-	ticks     uint64
+	ticks     int64
 }
 
 type Counter struct {
 	v       uint64
 	p       uint64
 	rate    float64
-	ticks_p uint64
-	ticks_v uint64
+	ticks_p int64
+	ticks_v int64
 	K       string
 	m       *MetricContext
 	mu      sync.RWMutex
@@ -42,6 +42,7 @@ type Gauge struct {
 // namespace - namespace that all metrics in this context belong to
 
 const jiffy = 100
+const NS_IN_SEC = 1 * 1000 * 1000 * 1000
 
 func NewMetricContext(namespace string) *MetricContext {
 	m := new(MetricContext)
@@ -49,12 +50,13 @@ func NewMetricContext(namespace string) *MetricContext {
 	m.Counters = make(map[string]*Counter)
 	m.Gauges = make(map[string]*Gauge)
 
-	// TODO: make this configurable
-	m.ticks = 1
+	start  := time.Now().UnixNano()
+	m.ticks = 0
+
 	ticker := time.NewTicker(time.Millisecond * jiffy)
 	go func() {
-		for _ = range ticker.C {
-			m.ticks++
+		for t := range ticker.C {
+			m.ticks = t.UnixNano() - start
 		}
 	}()
 
@@ -77,30 +79,42 @@ func (m *MetricContext) NewCounter(name string) *Counter {
 	c := new(Counter)
 	c.K = name
 	c.m = m
-	c.rate = 0.0
+	c.Reset()
 	m.Counters[name] = c
 	return c
+}
+
+func (c *Counter) Reset() {
+	c.rate = 0.0
+	c.ticks_p = 0
+	c.ticks_v = 0
+	c.v = 0
+	c.p = 0
 }
 
 // Set Counter value. This is useful if you are reading a metric
 // that is already a counter
 func (c *Counter) Set(v uint64) {
+	c.ticks_v = c.m.ticks
+	atomic.StoreUint64(&c.v, v)
+
+	// baseline for rate calculation
 	if c.ticks_p == 0 {
 		c.p = c.v
 		c.ticks_p = c.ticks_v
 	}
-	c.ticks_v = c.m.ticks
-	atomic.StoreUint64(&c.v, v)
 }
 
 // Add value to counter
 func (c *Counter) Add(delta uint64) {
+	c.ticks_v = c.m.ticks
+	atomic.AddUint64(&c.v, delta)
+
+	// baseline for rate calculation
 	if c.ticks_p == 0 {
 		c.p = c.v
 		c.ticks_p = c.ticks_v
 	}
-	c.ticks_v = c.m.ticks
-	atomic.AddUint64(&c.v, delta)
 }
 
 // Get value of counter
@@ -109,43 +123,27 @@ func (c *Counter) Get() uint64 {
 }
 
 // ComputeRate() calculates the rate of change of counter per
-// second.
+// second. (acquires a lock)
 // Since we avoid locking on Set/Add operations, rate can be
 // inaccurate on highly contended threads
+
 func (c *Counter) ComputeRate() float64 {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	rate := math.NaN()
+	rate := 0.0
+
 	delta_t := c.ticks_v - c.ticks_p
 	delta_v := c.v - c.p
-
-	// handle special cases
-
-	// no updates yet
-	if c.ticks_p == 0 {
-		c.rate = math.NaN()
-		return c.rate
-	}
-
-	// check if our counter stays at zero
-	if c.p == 0 && c.v == 0 {
-		c.rate = 0.0
-		return c.rate
-	}
-
-	// return cached rate if no new samples
-	// are seen
-	if c.p == c.v {
-		return c.rate
-	}
 
 	// we have two samples, compute rate and
 	// cache it away
 	if delta_t > 0 && c.v >= c.p {
-		rate = (float64(delta_v) / float64(delta_t)) * (1000 / jiffy)
+		rate = (float64(delta_v) / float64(delta_t)) * NS_IN_SEC
+		// update baseline
 		c.p = c.v
 		c.ticks_p = c.ticks_v
+		// cache rate calculated
 		c.rate = rate
 	}
 
@@ -158,10 +156,15 @@ func (c *Counter) ComputeRate() float64 {
 func (m *MetricContext) NewGauge(name string) *Gauge {
 	g := new(Gauge)
 	g.K = name
-	g.v = math.NaN()
 	g.m = m
+	g.Reset()
 	m.Gauges[name] = g
 	return g
+}
+
+// 
+func (g *Gauge) Reset() {
+	g.v = math.NaN()
 }
 
 // Set value of Gauge

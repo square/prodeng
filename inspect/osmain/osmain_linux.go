@@ -5,6 +5,7 @@ package osmain
 
 import (
 	"fmt"
+	"github.com/mgutz/ansi"
 	"github.com/square/prodeng/inspect/cpustat"
 	"github.com/square/prodeng/inspect/diskstat"
 	"github.com/square/prodeng/inspect/interfacestat"
@@ -25,7 +26,8 @@ type LinuxStats struct {
 	cstat  *cpustat.CPUStat
 }
 
-func RegisterOsDependent(m *metrics.MetricContext, step time.Duration, d *OsIndependentStats) *LinuxStats {
+func RegisterOsDependent(m *metrics.MetricContext, step time.Duration,
+	d *OsIndependentStats) *LinuxStats {
 
 	s := new(LinuxStats)
 	s.dstat = diskstat.New(m, step)
@@ -38,7 +40,9 @@ func RegisterOsDependent(m *metrics.MetricContext, step time.Duration, d *OsInde
 	return s
 }
 
-func PrintOsDependent(s *LinuxStats) {
+func PrintOsDependent(s *LinuxStats, batchmode bool) {
+
+	var problems []string
 
 	type cg_stat struct {
 		cpu *cpustat.PerCgroupStat
@@ -47,7 +51,11 @@ func PrintOsDependent(s *LinuxStats) {
 
 	fmt.Println("---")
 	for d, o := range s.dstat.Disks {
-		fmt.Printf("disk: %s usage: %3.1f%%\n", d, o.Usage())
+		fmt.Printf("diskio: %s usage: %3.1f%%\n", d, o.Usage())
+		if o.Usage() > 75.0 {
+			problems = append(problems,
+				fmt.Sprintf("Disk IO usage on (%v): %3.1f%%", d, o.Usage()))
+		}
 	}
 
 	fmt.Println("---")
@@ -86,11 +94,20 @@ func PrintOsDependent(s *LinuxStats) {
 			// get CPU usage per cgroup from pidstat
 			// unfortunately this is not exposed at cgroup level
 			cpu_usage := s.procs.CPUUsagePerCgroup(name)
+			cpu_throttle := v.cpu.Throttle()
 			out += fmt.Sprintf("cpu: %3.1f%% ", cpu_usage)
 			out += fmt.Sprintf(
 				"cpu_throttling: %3.1f%% (%.1f/%d) ",
-				v.cpu.Throttle(), v.cpu.Quota(),
+				cpu_throttle, v.cpu.Quota(),
 				(len(s.cstat.CPUS()) - 1))
+			if cpu_throttle > 0.5 {
+				problems =
+					append(problems,
+						fmt.Sprintf(
+							"CPU throttling on cgroup(%s): %3.1f%%",
+							name, cpu_throttle))
+			}
+
 		}
 
 		if v.mem != nil {
@@ -102,4 +119,12 @@ func PrintOsDependent(s *LinuxStats) {
 		fmt.Println(out)
 	}
 
+	fmt.Println("---")
+	for i := range problems {
+		msg := problems[i]
+		if !batchmode {
+			msg = ansi.Color(msg, "red")
+		}
+		fmt.Println("Problem: ", msg)
+	}
 }
