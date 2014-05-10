@@ -50,7 +50,7 @@ func NewMetricContext(namespace string) *MetricContext {
 	m.Counters = make(map[string]*Counter)
 	m.Gauges = make(map[string]*Gauge)
 
-	start  := time.Now().UnixNano()
+	start := time.Now().UnixNano()
 	m.ticks = 0
 
 	ticker := time.NewTicker(time.Millisecond * jiffy)
@@ -74,7 +74,46 @@ func (m *MetricContext) Print() {
 	}
 }
 
+// BasicCounter is a minimal counter - all operations are atomic
+func (m *MetricContext) NewBasicCounter(name string) *BasicCounter {
+	c := new(BasicCounter)
+	c.K = name
+	c.m = m
+	c.Reset()
+	return c
+}
+
+type BasicCounter struct {
+	v uint64
+	K string
+	m *MetricContext
+}
+
+// Reset counter to zero
+func (c *BasicCounter) Reset() {
+	atomic.StoreUint64(&c.v, 0)
+}
+
+// Set counter to value v.
+func (c *BasicCounter) Set(v uint64) {
+	atomic.StoreUint64(&c.v, v)
+}
+
+// Add delta to counter value v
+func (c *BasicCounter) Add(delta uint64) {
+	atomic.AddUint64(&c.v, delta)
+}
+
+// Get value of counter
+func (c *BasicCounter) Get() uint64 {
+	return c.v
+}
+
 // Counters
+// Counters differ from BasicCounter by having additional
+// fields for computing rate
+// All basic counter operations are atomic and no locks are held
+
 func (m *MetricContext) NewCounter(name string) *Counter {
 	c := new(Counter)
 	c.K = name
@@ -162,7 +201,7 @@ func (m *MetricContext) NewGauge(name string) *Gauge {
 	return g
 }
 
-// 
+//
 func (g *Gauge) Reset() {
 	g.v = math.NaN()
 }
