@@ -19,8 +19,21 @@ r := c.ComputeRate() // compute rate of change/sec
 c := metrics.NewGauge(m)
 c.Set(12.0) // Set Value
 c.Get() // get Value
+
+// StatsTimer for measuring things like latencies
+
+s := metrics.NewStatsTimer(m)
+
+t := s.Start() // returns a timer
+s.Stop(t) // stop the timer
+
+// Example
+func (* Webapp) ServeRequest(uri string) error {
+	t := s.Start()
+
+	// do something
+	s.Stop(t)
+}
+
+fmt.Println("Percentile latency for 75 pctile: ", s.Percentile(75))
 ```
-
-
-###### TODO
-1. Add support for Timers; see netflix servo for examples

@@ -3,12 +3,12 @@
 package metrics
 
 import (
-	"time"
 	"fmt"
+	"time"
 )
 
 type Timer struct {
-	v int64
+	v       int64
 	start_v int64
 }
 
