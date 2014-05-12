@@ -3,7 +3,6 @@
 package metrics
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -29,7 +28,6 @@ func (t *Timer) Stop() int64 {
 	if t.v < 0 {
 		t.v = 0
 	}
-	fmt.Println(t)
 	return t.v
 }
 

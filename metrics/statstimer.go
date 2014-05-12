@@ -4,7 +4,6 @@ package metrics
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"sort"
 	"sync"
@@ -42,7 +41,7 @@ func (s *StatsTimer) Start() *Timer {
 	return t
 }
 
-func (s *StatsTimer) Stop(t *Timer) {
+func (s *StatsTimer) Stop(t *Timer) float64 {
 	delta := t.Stop()
 
 	// Store current value in history
@@ -53,6 +52,7 @@ func (s *StatsTimer) Stop(t *Timer) {
 	if s.idx == len(s.history) {
 		s.idx = 0
 	}
+	return float64(delta) / float64(s.timeUnit.Nanoseconds())
 }
 
 // TODO: move stats implementation to a dedicated package
@@ -81,10 +81,14 @@ func (s *StatsTimer) Percentile(percentile float64) (float64, error) {
 
 	filtLen := len(in)
 
+	if filtLen < 1 {
+		return math.NaN(), errors.New("No values")
+	}
+
 	// Since slices are zero-indexed, we are naturally rounded up
 	nearest_rank := int((percentile / 100) * float64(filtLen))
 
-	if nearest_rank == filtLen {
+	if nearest_rank > filtLen {
 		nearest_rank = filtLen - 1
 	}
 
