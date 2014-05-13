@@ -44,16 +44,10 @@ func main() {
 	// Filter processes which have < 1% CPU or < 1% memory
 	// and try to keep minimum of 5
 
-	n := 0
 	procs.SetPidFilter(pidstat.PidFilterFunc(func(p *pidstat.PerProcessStat) bool {
 
-		switch {
-		case n < DISPLAY_PID_COUNT:
+		if len(procs.Processes) < DISPLAY_PID_COUNT {
 			return true
-		case n == DISPLAY_PID_COUNT:
-			n = 0
-		default:
-			n++
 		}
 
 		if p.CPUUsage() > 1.0 {

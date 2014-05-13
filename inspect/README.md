@@ -82,15 +82,14 @@ Problem:  CPU usage > 80%
 import "github.com/square/prodeng/inspect/cpustat"
 import "github.com/square/prodeng/metrics"
 
-// Initialize a metric context with step 1 second and maximum
-// history of 3 samples
-m := metrics.NewMetricContext("system", time.Millisecond*1000*1, 3)
+// Initialize a metric context
+m := metrics.NewMetricContext("system")
 	
 // Collect CPU metrics every m.Step seconds
-cstat := cpustat.New(m)
+cstat := cpustat.New(m,  time.Millisecond*1000)
 
 // Allow two samples to be collected. Since most metrics are counters.
-time.Sleep(time.Millisecond * 3)
+time.Sleep(time.Millisecond * 1000 * 3)
 fmt.Println(cstat.Usage())
 
 ```
