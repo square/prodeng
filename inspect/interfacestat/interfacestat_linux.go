@@ -58,7 +58,7 @@ func (s *InterfaceStat) Collect() {
 
 		o, ok := s.Interfaces[dev]
 		if !ok {
-			o = NewPerInterfaceStat(s.m)
+			o = NewPerInterfaceStat(s.m, dev)
 			s.Interfaces[dev] = o
 		}
 
@@ -107,10 +107,10 @@ type PerInterfaceStatMetrics struct {
 	TXmulticast  *metrics.Counter
 }
 
-func NewPerInterfaceStat(m *metrics.MetricContext) *PerInterfaceStat {
+func NewPerInterfaceStat(m *metrics.MetricContext, dev string) *PerInterfaceStat {
 	c := new(PerInterfaceStat)
 	c.Metrics = new(PerInterfaceStatMetrics)
-	misc.InitializeMetrics(c.Metrics, m)
+	misc.InitializeMetrics(c.Metrics, m, dev)
 	return c
 }
 

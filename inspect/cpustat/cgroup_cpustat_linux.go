@@ -117,7 +117,7 @@ func NewPerCgroupStatMetrics(m *metrics.MetricContext, path string) *PerCgroupSt
 	c.path = path
 
 	// initialize all metrics
-	misc.InitializeMetrics(c, m)
+	misc.InitializeMetrics(c, m, path)
 
 	return c
 }

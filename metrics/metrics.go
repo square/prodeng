@@ -3,18 +3,22 @@
 package metrics
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
 type MetricContext struct {
-	namespace string
-	Counters  map[string]*Counter
-	Gauges    map[string]*Gauge
-	ticks     int64
+	namespace     string
+	Counters      map[string]*Counter
+	Gauges        map[string]*Gauge
+	BasicCounters map[string]*BasicCounter
+	StatsTimers   map[string]*StatsTimer
+	ticks         int64
 }
 
 type Counter struct {
@@ -23,14 +27,12 @@ type Counter struct {
 	rate    float64
 	ticks_p int64
 	ticks_v int64
-	K       string
 	m       *MetricContext
 	mu      sync.RWMutex
 }
 
 type Gauge struct {
 	v  float64
-	K  string
 	m  *MetricContext
 	mu sync.RWMutex
 }
@@ -43,12 +45,15 @@ type Gauge struct {
 
 const jiffy = 100
 const NS_IN_SEC = 1 * 1000 * 1000 * 1000
+var percentiles = []float64 { 50, 75, 95, 99, 99.9, 99.99, 99.999 }
 
 func NewMetricContext(namespace string) *MetricContext {
 	m := new(MetricContext)
 	m.namespace = namespace
-	m.Counters = make(map[string]*Counter)
-	m.Gauges = make(map[string]*Gauge)
+	m.Counters = make(map[string]*Counter, 0)
+	m.Gauges = make(map[string]*Gauge, 0)
+	m.BasicCounters = make(map[string]*BasicCounter, 0)
+	m.StatsTimers = make(map[string]*StatsTimer, 0)
 
 	start := time.Now().UnixNano()
 	m.ticks = 0
@@ -65,19 +70,93 @@ func NewMetricContext(namespace string) *MetricContext {
 
 // print ALL metrics to stdout
 func (m *MetricContext) Print() {
-	for key, value := range m.Counters {
-		fmt.Printf("counter: %s value: %d previous: %v \n", key,
-			value.v, value.p)
+	for name, c := range m.Counters {
+		fmt.Printf("counter %s %d %.3f \n", name,
+			c.Get(), c.ComputeRate())
 	}
-	for key, value := range m.Gauges {
-		fmt.Printf("gauge: %s , value: %f \n", key, value.v)
+	for name, g := range m.Gauges {
+		fmt.Printf("gauge %s %.3f \n", name, g.Get())
 	}
+	for name, c := range m.BasicCounters {
+		fmt.Printf("basiccounter %s %d \n", name, c.Get())
+	}
+
+	for name, s := range m.StatsTimers {
+		out := ""
+		for _, p := range percentiles {
+			percentile, err := s.Percentile(p)
+			if err == nil {
+				out += fmt.Sprintf(".3f", percentile)
+			}
+		}
+		fmt.Printf("statstimer %s %s \n", name, out)
+	}
+}
+
+// expose metrics via json
+func (m *MetricContext)  HttpJsonHandler(w http.ResponseWriter, r *http.Request) {
+        w.Header().Set("Content-Type", "application/json")
+
+	encoder := json.NewEncoder(w)
+
+	for name, c := range m.Counters {
+		counterJson := struct {
+			Name string
+			Value uint64
+			Rate float64
+		}{
+			name,
+			c.Get(),
+			c.ComputeRate(),
+		}
+
+		_ = encoder.Encode(counterJson)
+
+	}
+	/*
+	for name, g := range m.Gauges {
+		w.Write([]byte(fmt.Sprintf("{\"name\": %s, \"value\": %f}\n",
+			name, g.Get())))
+	}*/
+
+	/*
+
+	for _, s := range m.StatsTimers {
+		type percentileData struct {
+			percentile string
+			value float64
+		}
+		var pctiles []percentileData
+		for _, p := range percentiles {
+			percentile, err := s.Percentile(p)
+			stuff := fmt.Sprintf("%.6f",p)
+			if err == nil {
+				pctiles = append(pctiles, percentileData{stuff,percentile})
+			}
+		}
+		data := struct {
+			Type string
+			Name string
+			Percentiles []percentileData
+		}{
+			"statstimer",
+			s.K,
+			pctiles,
+		}
+
+		b, err := json.Marshal(data)
+		if err != nil {
+			continue
+		}
+		w.Write(b)
+	} */
+
+        w.Write([]byte("\n")) // Be nice to curl
 }
 
 // BasicCounter is a minimal counter - all operations are atomic
 func (m *MetricContext) NewBasicCounter(name string) *BasicCounter {
 	c := new(BasicCounter)
-	c.K = name
 	c.m = m
 	c.Reset()
 	return c
@@ -85,7 +164,6 @@ func (m *MetricContext) NewBasicCounter(name string) *BasicCounter {
 
 type BasicCounter struct {
 	v uint64
-	K string
 	m *MetricContext
 }
 
@@ -116,7 +194,6 @@ func (c *BasicCounter) Get() uint64 {
 
 func (m *MetricContext) NewCounter(name string) *Counter {
 	c := new(Counter)
-	c.K = name
 	c.m = m
 	c.Reset()
 	m.Counters[name] = c
@@ -194,7 +271,6 @@ func (c *Counter) ComputeRate() float64 {
 // NewGauge initializes a Gauge and returns it
 func (m *MetricContext) NewGauge(name string) *Gauge {
 	g := new(Gauge)
-	g.K = name
 	g.m = m
 	g.Reset()
 	m.Gauges[name] = g

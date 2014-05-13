@@ -15,7 +15,9 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"fmt"
 )
+
 
 /*
 #include <unistd.h>
@@ -25,6 +27,7 @@ import "C"
 
 var LINUX_TICKS_IN_SEC int = int(C.sysconf(C._SC_CLK_TCK))
 var PAGESIZE int = int(C.sysconf(C._SC_PAGESIZE))
+var _ = fmt.Println
 
 // NewProcessStat allocates a new ProcessStat object
 // Arguments:
@@ -313,7 +316,7 @@ func NewPerProcessStatMetrics(m *metrics.MetricContext, pid string) *PerProcessS
 	s.Pid = pid
 
 	// initialize all metrics
-	misc.InitializeMetrics(s, m)
+	misc.InitializeMetrics(s, m, "PID." + pid)
 
 	return s
 }

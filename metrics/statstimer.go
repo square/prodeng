@@ -22,7 +22,9 @@ type StatsTimer struct {
 const NOT_INITIALIZED = -1
 
 // StatsTimer
-func (m *MetricContext) NewStatsTimer(name string, timeUnit time.Duration, nsamples int) *StatsTimer {
+func (m *MetricContext) NewStatsTimer(
+		name string, timeUnit time.Duration, nsamples int) *StatsTimer {
+
 	s := new(StatsTimer)
 	s.K = name
 	s.m = m

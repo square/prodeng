@@ -80,7 +80,7 @@ func (s *DiskStat) Collect() {
 
 		o, ok := s.Disks[blkdev]
 		if !ok {
-			o = NewPerDiskStat(s.m)
+			o = NewPerDiskStat(s.m, blkdev)
 			s.Disks[blkdev] = o
 		}
 
@@ -118,10 +118,10 @@ type PerDiskStatMetrics struct {
 	WeightedIOSpentMsecs *metrics.Counter
 }
 
-func NewPerDiskStat(m *metrics.MetricContext) *PerDiskStat {
+func NewPerDiskStat(m *metrics.MetricContext, blkdev string) *PerDiskStat {
 	c := new(PerDiskStat)
 	c.Metrics = new(PerDiskStatMetrics)
-	misc.InitializeMetrics(c.Metrics, m)
+	misc.InitializeMetrics(c.Metrics, m, "diskstat." + blkdev)
 	return c
 }
 
