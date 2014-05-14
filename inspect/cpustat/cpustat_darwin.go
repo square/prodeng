@@ -4,7 +4,7 @@ import "unsafe"
 import "time"
 import "math"
 import "github.com/square/prodeng/metrics"
-import _ "github.com/square/prodeng/inspect/misc"
+import "github.com/square/prodeng/inspect/misc"
 
 // TODO: Per CPU stats - are they available?
 
@@ -32,7 +32,7 @@ type CPUStatPerCPU struct {
 
 func New(m *metrics.MetricContext, Step time.Duration) *CPUStat {
 	c := new(CPUStat)
-	c.All = CPUStatPerCPUNew(m)
+	c.All = CPUStatPerCPUNew(m, "cpu")
 	c.m = m
 	ticker := time.NewTicker(Step)
 	go func() {
@@ -88,13 +88,9 @@ func (o *CPUStat) Kernel() float64 {
 
 // CPUStatPerCPUNew returns a struct representing counters for
 // per CPU statistics
-func CPUStatPerCPUNew(m *metrics.MetricContext) *CPUStatPerCPU {
+func CPUStatPerCPUNew(m *metrics.MetricContext, cpu string) *CPUStatPerCPU {
 	o := new(CPUStatPerCPU)
-	o.User = m.NewCounter("User")
-	o.UserLowPrio = m.NewCounter("UserLowPrio")
-	o.System = m.NewCounter("System")
-	o.Idle = m.NewCounter("Idle")
-	o.Total = m.NewCounter("Total")
+	misc.InitializeMetrics(o, m, "cpustat." + cpu)
 	return o
 }
 
