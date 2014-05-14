@@ -96,32 +96,33 @@ func (m *MetricContext) Print() {
 // expose metrics via json
 func (m *MetricContext)  HttpJsonHandler(w http.ResponseWriter, r *http.Request) {
         w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("[\n"))
 
-	encoder := json.NewEncoder(w)
+
+	appendcomma := false
+	for name, g := range m.Gauges {
+		if appendcomma {
+			w.Write([]byte(",\n"))
+		}
+		w.Write([]byte(fmt.Sprintf(`{"type": "gauge", "name": "%s", "value": %f}`,
+			name, g.Get())))
+		appendcomma = true
+	}
 
 	for name, c := range m.Counters {
-		counterJson := struct {
-			Name string
-			Value uint64
-			Rate float64
-		}{
-			name,
-			c.Get(),
-			c.ComputeRate(),
+		if appendcomma {
+			w.Write([]byte(",\n"))
 		}
-
-		_ = encoder.Encode(counterJson)
-
+		w.Write([]byte(fmt.Sprintf(
+			`{"type": "counter", "name": "%s", "value": %d, "rate": %f}`,
+			name, c.Get(), c.ComputeRate())))
+		appendcomma = true
 	}
-	/*
-	for name, g := range m.Gauges {
-		w.Write([]byte(fmt.Sprintf("{\"name\": %s, \"value\": %f}\n",
-			name, g.Get())))
-	}*/
-
-	/*
 
 	for _, s := range m.StatsTimers {
+		if appendcomma {
+			w.Write([]byte(","))
+		}
 		type percentileData struct {
 			percentile string
 			value float64
@@ -149,8 +150,10 @@ func (m *MetricContext)  HttpJsonHandler(w http.ResponseWriter, r *http.Request)
 			continue
 		}
 		w.Write(b)
-	} */
+		appendcomma = true
+	}
 
+	w.Write([]byte("]"))
         w.Write([]byte("\n")) // Be nice to curl
 }
 
@@ -196,8 +199,13 @@ func (m *MetricContext) NewCounter(name string) *Counter {
 	c := new(Counter)
 	c.m = m
 	c.Reset()
-	m.Counters[name] = c
+	c.Register(name)
 	return c
+}
+
+// 
+func (c *Counter) Register(name string) {
+	c.m.Counters[name] = c
 }
 
 func (c *Counter) Reset() {
@@ -272,9 +280,14 @@ func (c *Counter) ComputeRate() float64 {
 func (m *MetricContext) NewGauge(name string) *Gauge {
 	g := new(Gauge)
 	g.m = m
+	g.Register(name)
 	g.Reset()
-	m.Gauges[name] = g
 	return g
+}
+
+// 
+func (g *Gauge) Register(name string) {
+	g.m.Gauges[name] = g
 }
 
 //

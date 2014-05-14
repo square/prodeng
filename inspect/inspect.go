@@ -90,7 +90,6 @@ func main() {
 	// run http server 
 	if servermode {
 		go func() {
-			http.HandleFunc("/", m.HttpJsonHandler)
 			http.HandleFunc("/metrics.json", m.HttpJsonHandler)
 			log.Fatal(http.ListenAndServe(address, nil))
 		}()

@@ -7,6 +7,7 @@ import (
 	"github.com/square/prodeng/inspect/misc"
 	"github.com/square/prodeng/metrics"
 	"os"
+	"path/filepath"
 	"regexp"
 	"time"
 )
@@ -63,7 +64,7 @@ func (c *CgroupStat) Collect(mountpoint string) {
 	for _, cgroup := range cgroups {
 		_, ok := c.Cgroups[cgroup]
 		if !ok {
-			c.Cgroups[cgroup] = NewPerCgroupStat(c.m, cgroup)
+			c.Cgroups[cgroup] = NewPerCgroupStat(c.m, cgroup, mountpoint)
 		}
 		c.Cgroups[cgroup].Metrics.Collect()
 	}
@@ -76,10 +77,12 @@ type PerCgroupStat struct {
 	m       *metrics.MetricContext
 }
 
-func NewPerCgroupStat(m *metrics.MetricContext, path string) *PerCgroupStat {
+func NewPerCgroupStat(m *metrics.MetricContext, path string, mp string) *PerCgroupStat {
 	c := new(PerCgroupStat)
 	c.m = m
-	c.Metrics = NewPerCgroupStatMetrics(m, path)
+
+	prefix, _ := filepath.Rel(mp, path)
+	c.Metrics = NewPerCgroupStatMetrics(m, "cpustat.cgroup." + prefix)
 
 	return c
 }

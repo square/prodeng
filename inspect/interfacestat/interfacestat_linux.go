@@ -110,7 +110,7 @@ type PerInterfaceStatMetrics struct {
 func NewPerInterfaceStat(m *metrics.MetricContext, dev string) *PerInterfaceStat {
 	c := new(PerInterfaceStat)
 	c.Metrics = new(PerInterfaceStatMetrics)
-	misc.InitializeMetrics(c.Metrics, m, dev)
+	misc.InitializeMetrics(c.Metrics, m, "interfacestat." + dev)
 	return c
 }
 

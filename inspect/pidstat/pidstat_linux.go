@@ -142,6 +142,7 @@ func (c *ProcessStat) Collect() {
 		for i, pidstat := range c.x {
 			if c.filter(pidstat) {
 				h[pidstat.Pid()] = pidstat
+				pidstat.Metrics.Register() // forces registration with new name
 				c.x[i] = NewPerProcessStat(c.m, "")
 				pidstat.Metrics.dead = false
 			}
@@ -316,9 +317,16 @@ func NewPerProcessStatMetrics(m *metrics.MetricContext, pid string) *PerProcessS
 	s.Pid = pid
 
 	// initialize all metrics
-	misc.InitializeMetrics(s, m, "PID." + pid)
+	misc.InitializeMetrics(s, m, "PLACEHOLDER")
 
 	return s
+}
+
+func (s *PerProcessStatMetrics) Register() {
+	prefix := "pidstat.pid" + s.Pid
+	s.Utime.Register(prefix + "." + "Utime")
+	s.Stime.Register(prefix + "." + "Stime")
+	s.Rss.Register(prefix + "." + "Rss")
 }
 
 func (s *PerProcessStatMetrics) Reset(pid string) {

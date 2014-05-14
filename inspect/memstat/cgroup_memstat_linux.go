@@ -9,6 +9,7 @@ import (
 	"github.com/square/prodeng/metrics"
 	"math"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"strings"
@@ -66,7 +67,7 @@ func (c *CgroupStat) Collect(mountpoint string) {
 	for _, cgroup := range cgroups {
 		_, ok := c.Cgroups[cgroup]
 		if !ok {
-			c.Cgroups[cgroup] = NewPerCgroupStat(c.m, cgroup)
+			c.Cgroups[cgroup] = NewPerCgroupStat(c.m, cgroup, mountpoint)
 		}
 		c.Cgroups[cgroup].Metrics.Collect()
 	}
@@ -80,10 +81,11 @@ type PerCgroupStat struct {
 	m       *metrics.MetricContext
 }
 
-func NewPerCgroupStat(m *metrics.MetricContext, path string) *PerCgroupStat {
+func NewPerCgroupStat(m *metrics.MetricContext, path string, mp string) *PerCgroupStat {
 	c := new(PerCgroupStat)
 	c.m = m
-	c.Metrics = NewPerCgroupStatMetrics(m, path)
+
+	c.Metrics = NewPerCgroupStatMetrics(m, path, mp)
 
 	return c
 }
@@ -140,12 +142,15 @@ type PerCgroupStatMetrics struct {
 	path                string
 }
 
-func NewPerCgroupStatMetrics(m *metrics.MetricContext, path string) *PerCgroupStatMetrics {
+func NewPerCgroupStatMetrics(m *metrics.MetricContext,
+		path string, mp string) *PerCgroupStatMetrics {
+
 	c := new(PerCgroupStatMetrics)
 	c.path = path
 
+	prefix, _ := filepath.Rel(mp, path)
 	// initialize all metrics
-	misc.InitializeMetrics(c, m, path)
+	misc.InitializeMetrics(c, m, "memstat.cgroup." + prefix)
 
 	return c
 }
