@@ -41,7 +41,8 @@ http://godoc.org/github.com/square/prodeng/metrics
 
 ###### Usage
 
-####### Command line
+###### Command line
+
 ./bin/inspect
 
 ```
@@ -75,7 +76,7 @@ Problem:  CPU throttling on cgroup(small): 79.6%
 Problem:  CPU usage > 80%
 ```
 
-######## Server 
+###### Server 
 
 *inspect* can be run in server mode to run continously and expose metrics via HTTP JSON api
 
