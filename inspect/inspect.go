@@ -13,6 +13,8 @@ import (
 	"github.com/square/prodeng/inspect/osmain"
 	"github.com/square/prodeng/inspect/pidstat"
 	"github.com/square/prodeng/metrics"
+	"log"
+	"net/http"
 	"time"
 )
 
@@ -20,11 +22,23 @@ const DISPLAY_PID_COUNT = 5
 
 func main() {
 	// options
-	var batchmode bool
+	var batchmode, servermode bool
+	var address string
+	var stepSec int
 
 	flag.BoolVar(&batchmode, "b", false, "Run in batch mode; suitable for parsing")
 	flag.BoolVar(&batchmode, "batchmode", false, "Run in batch mode; suitable for parsing")
+	flag.BoolVar(&servermode, "server", false,
+		"Runs continously and exposes metrics as JSON on HTTP")
+	flag.StringVar(&address, "address", ":19999",
+		"address to listen on for http if running in server mode")
+	flag.IntVar(&stepSec, "step", 2,
+		"metrics are collected every step seconds")
 	flag.Parse()
+
+	if servermode {
+		batchmode = true
+	}
 
 	if !batchmode {
 		fmt.Println("Gathering statistics......")
@@ -34,7 +48,7 @@ func main() {
 	m := metrics.NewMetricContext("system")
 
 	// Default step for collectors
-	step := time.Millisecond * 1000
+	step := time.Millisecond * time.Duration(stepSec) * 1000
 
 	// Collect cpu/memory/disk/per-pid metrics
 	cstat := cpustat.New(m, step)
@@ -73,8 +87,16 @@ func main() {
 	// platforms yet
 	d := osmain.RegisterOsDependent(m, step, osind)
 
-	// Check metrics every 2s
-	ticker := time.NewTicker(time.Millisecond * 1100 * 2)
+	// run http server 
+	if servermode {
+		go func() {
+			http.HandleFunc("/metrics.json", m.HttpJsonHandler)
+			log.Fatal(http.ListenAndServe(address, nil))
+		}()
+	}
+
+	// command line refresh every 2 step
+	ticker := time.NewTicker(step * 2)
 	for _ = range ticker.C {
 
 		// Problems

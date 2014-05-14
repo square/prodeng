@@ -40,7 +40,7 @@ func ReadUintFromFile(path string) uint64 {
 	return 0
 }
 
-func InitializeMetrics(c Interface, m *metrics.MetricContext) {
+func InitializeMetrics(c Interface, m *metrics.MetricContext, prefix string) {
 	s := reflect.ValueOf(c).Elem()
 	typeOfT := s.Type()
 	for i := 0; i < s.NumField(); i++ {
@@ -49,10 +49,10 @@ func InitializeMetrics(c Interface, m *metrics.MetricContext) {
 			continue
 		}
 		if f.Type().Elem() == reflect.TypeOf(metrics.Gauge{}) {
-			f.Set(reflect.ValueOf(m.NewGauge(typeOfT.Field(i).Name)))
+			f.Set(reflect.ValueOf(m.NewGauge(prefix + "." + typeOfT.Field(i).Name)))
 		}
 		if f.Type().Elem() == reflect.TypeOf(metrics.Counter{}) {
-			f.Set(reflect.ValueOf(m.NewCounter(typeOfT.Field(i).Name)))
+			f.Set(reflect.ValueOf(m.NewCounter(prefix + "." + typeOfT.Field(i).Name)))
 		}
 	}
 	return

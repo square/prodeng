@@ -35,7 +35,7 @@ type CPUStatPerCPU struct {
 
 func New(m *metrics.MetricContext, Step time.Duration) *CPUStat {
 	c := new(CPUStat)
-	c.All = CPUStatPerCPUNew(m)
+	c.All = NewCPUStatPerCPU(m, "cpu")
 	c.m = m
 	c.cpus = make(map[string]*CPUStatPerCPU, 1)
 	ticker := time.NewTicker(Step)
@@ -64,7 +64,7 @@ func (s *CPUStat) Collect() {
 			} else {
 				per_cpu, ok := s.cpus[f[0]]
 				if !ok {
-					per_cpu = CPUStatPerCPUNew(s.m)
+					per_cpu = NewCPUStatPerCPU(s.m, f[0])
 					s.cpus[f[0]] = per_cpu
 				}
 				parseCPUline(per_cpu, f)
@@ -105,20 +105,12 @@ func (o *CPUStat) PerCPUStat(cpu string) *CPUStatPerCPU {
 	return o.cpus[cpu]
 }
 
-// CPUStatPerCPUNew returns a struct representing counters for
+// NewCPUStatPerCPU returns a struct representing counters for
 // per CPU statistics
-func CPUStatPerCPUNew(m *metrics.MetricContext) *CPUStatPerCPU {
+func NewCPUStatPerCPU(m *metrics.MetricContext, name string) *CPUStatPerCPU {
 	o := new(CPUStatPerCPU)
-	o.User = m.NewCounter("User")
-	o.UserLowPrio = m.NewCounter("UserLowPrio")
-	o.System = m.NewCounter("System")
-	o.Idle = m.NewCounter("Idle")
-	o.Iowait = m.NewCounter("Iowait")
-	o.Irq = m.NewCounter("Irq")
-	o.Softirq = m.NewCounter("Softirq")
-	o.Steal = m.NewCounter("Steal")
-	o.Guest = m.NewCounter("Guest")
-	o.Total = m.NewCounter("Total")
+
+	misc.InitializeMetrics(o, m, "cpustat." + name)
 	return o
 }
 

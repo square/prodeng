@@ -5,6 +5,7 @@ package metrics
 import "testing"
 import "time"
 import "math"
+import "sync"
 
 // BUG: This test will most likely fail on a highly loaded
 // system
@@ -33,7 +34,7 @@ func TestCounterRate(t *testing.T) {
 	want := 200.0
 	out := c.ComputeRate()
 
-	if math.Abs(want - out) > 1 {
+	if math.Abs(want-out) > 1 {
 		t.Errorf("c.ComputeRate() = %v, want %v", out, want)
 	}
 }
@@ -42,7 +43,7 @@ func TestCounterRateNoChange(t *testing.T) {
 	m := NewMetricContext("testing")
 	c := m.NewCounter("testcounter")
 	c.Set(0)
-	time.Sleep(time.Millisecond*100)
+	time.Sleep(time.Millisecond * 100)
 	c.Set(0)
 	want := 0.0
 	out := c.ComputeRate()
@@ -70,5 +71,35 @@ func TestDefaultCounterVal(t *testing.T) {
 	c := m.NewCounter("stuff")
 	if c.Get() != 0 {
 		t.Errorf("c.Get() = %v, want %v", c.Get(), 0)
+	}
+}
+
+func TestStatsTimer(t *testing.T) {
+	m := NewMetricContext("testing")
+	s := m.NewStatsTimer("stuff", time.Millisecond, 100) // keep 100 samples
+	var wg sync.WaitGroup
+
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		x := i + 1
+		go func() {
+			defer wg.Done()
+			stopWatch := s.Start()
+			time.Sleep(time.Millisecond * time.Duration(x) * 10)
+			s.Stop(stopWatch)
+		}()
+	}
+
+	// block till all goroutines finish
+	wg.Wait()
+
+	pctile, err := s.Percentile(100)
+	if math.Abs(pctile-1000) > 5 || err != nil {
+		t.Errorf("Percentile expected: 1000 got: %v", pctile)
+	}
+
+	pctile, err = s.Percentile(75)
+	if math.Abs(pctile-760) > 5 || err != nil {
+		t.Errorf("Percentile expected: 750 got: %v", pctile)
 	}
 }

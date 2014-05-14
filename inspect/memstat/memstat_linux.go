@@ -92,15 +92,7 @@ type MemStatMetrics struct {
 func MemStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MemStatMetrics {
 	c := new(MemStatMetrics)
 
-	// initialize all gauges
-	s := reflect.ValueOf(c).Elem()
-	typeOfT := s.Type()
-	for i := 0; i < s.NumField(); i++ {
-		f := s.Field(i)
-		if f.Type().Elem() == reflect.TypeOf(metrics.Gauge{}) {
-			f.Set(reflect.ValueOf(m.NewGauge(typeOfT.Field(i).Name)))
-		}
-	}
+	misc.InitializeMetrics(c, m, "memstat")
 
 	// collect once
 	c.Collect()
