@@ -41,6 +41,7 @@ http://godoc.org/github.com/square/prodeng/metrics
 
 ###### Usage
 
+####### Command line
 ./bin/inspect
 
 ```
@@ -72,6 +73,27 @@ cgroup:small cpu: 10.0% cpu_throttling: 79.6% (0.1/1) mem: 0.1% (308.00KB/409.60
 Problem:  Disk IO usage on (sdb): 92.7%
 Problem:  CPU throttling on cgroup(small): 79.6%
 Problem:  CPU usage > 80%
+```
+
+######## Server 
+
+*inspect* can be run in server mode to run continously and expose metrics via HTTP JSON api
+
+./bin/inspect  -server -address :12345
+
+```
+s@c62% curl localhost:12345/metrics.json 2>/dev/null
+[
+{"type": "gauge", "name": "memstat.Mapped", "value": 16314368.000000},
+{"type": "gauge", "name": "memstat.HugePages_Rsvd", "value": 0.000000},
+{"type": "gauge", "name": "diskstat.sr0.IOInProgress", "value": 0.000000},
+{"type": "gauge", "name": "memstat.cgroup.small.Inactive_anon", "value": 0.000000},
+....... truncated
+{"type": "counter", "name": "diskstat.sdb.ReadSectors", "value": 7288530, "rate": 0.000000},
+{"type": "counter", "name": "interfacestat.eth0.TXpackets", "value": 6445308, "rate": 4.333320},
+{"type": "counter", "name": "interfacestat.eth0.TXframe", "value": 0, "rate": 0.000000},
+{"type": "counter", "name": "pidstat.pid1.Utime", "value": 31, "rate": 0.000000},
+{"type": "counter", "name": "pidstat.pid29769.Utime", "value": 74296, "rate": 0.000000}]
 ```
 
 ###### Example API use 
