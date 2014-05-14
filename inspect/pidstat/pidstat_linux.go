@@ -317,7 +317,7 @@ func NewPerProcessStatMetrics(m *metrics.MetricContext, pid string) *PerProcessS
 	s.Pid = pid
 
 	// initialize all metrics
-	misc.InitializeMetrics(s, m, "")
+	misc.InitializeMetrics(s, m, "IGNORE")
 
 	return s
 }
