@@ -119,8 +119,7 @@ fmt.Println(cstat.Usage())
 
 ###### Todo
 
-  * Performance can be improved. PerProcessStat needs to have better heuristics
-to backoff when the number of processes is > 1024
+  * PerProcessStat on darwin doesn't include optimizations done for Linux. 
   * Add intelligence to find problems. Start with easy ones like CPU usage
   * Command line utility needs much nicer formatting and options to dig into per process/cgroup details
   * Add io metrics per process (need root priviliges)
