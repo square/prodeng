@@ -5,12 +5,24 @@ package metrics
 import (
 	"encoding/json"
 	"fmt"
-	"math"
 	"net/http"
-	"sync"
-	"sync/atomic"
 	"time"
 )
+
+// package initialization code
+// sets up a ticker to "cache" time
+
+var TICKS int64
+
+func init() {
+	start := time.Now().UnixNano()
+	ticker := time.NewTicker(time.Millisecond * jiffy)
+	go func() {
+		for t := range ticker.C {
+			TICKS = t.UnixNano() - start
+		}
+	}()
+}
 
 type MetricContext struct {
 	namespace     string
@@ -18,23 +30,6 @@ type MetricContext struct {
 	Gauges        map[string]*Gauge
 	BasicCounters map[string]*BasicCounter
 	StatsTimers   map[string]*StatsTimer
-	ticks         int64
-}
-
-type Counter struct {
-	v       uint64
-	p       uint64
-	rate    float64
-	ticks_p int64
-	ticks_v int64
-	m       *MetricContext
-	mu      sync.RWMutex
-}
-
-type Gauge struct {
-	v  float64
-	m  *MetricContext
-	mu sync.RWMutex
 }
 
 // Creates a new metric context. A metric context specifies a namespace
@@ -44,8 +39,13 @@ type Gauge struct {
 // namespace - namespace that all metrics in this context belong to
 
 const jiffy = 100
+
+// TODO: use constants from package time
 const NS_IN_SEC = 1 * 1000 * 1000 * 1000
-var percentiles = []float64 { 50, 75, 95, 99, 99.9, 99.99, 99.999 }
+
+// default percentiles to compute when serializing statstimer type
+// to stdout/json
+var percentiles = []float64{50, 75, 95, 99, 99.9, 99.99, 99.999}
 
 func NewMetricContext(namespace string) *MetricContext {
 	m := new(MetricContext)
@@ -55,20 +55,10 @@ func NewMetricContext(namespace string) *MetricContext {
 	m.BasicCounters = make(map[string]*BasicCounter, 0)
 	m.StatsTimers = make(map[string]*StatsTimer, 0)
 
-	start := time.Now().UnixNano()
-	m.ticks = 0
-
-	ticker := time.NewTicker(time.Millisecond * jiffy)
-	go func() {
-		for t := range ticker.C {
-			m.ticks = t.UnixNano() - start
-		}
-	}()
-
 	return m
 }
 
-// print ALL metrics to stdout
+// Print() prints ALL metrics to stdout
 func (m *MetricContext) Print() {
 	for name, c := range m.Counters {
 		fmt.Printf("counter %s %d %.3f \n", name,
@@ -93,11 +83,11 @@ func (m *MetricContext) Print() {
 	}
 }
 
-// expose metrics via json
-func (m *MetricContext)  HttpJsonHandler(w http.ResponseWriter, r *http.Request) {
-        w.Header().Set("Content-Type", "application/json")
+// HttpJsonHandler exposes all metrics via json
+// TODO: too long, too ugly - fix
+func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte("[\n"))
-
 
 	appendcomma := false
 	for name, g := range m.Gauges {
@@ -125,19 +115,19 @@ func (m *MetricContext)  HttpJsonHandler(w http.ResponseWriter, r *http.Request)
 		}
 		type percentileData struct {
 			percentile string
-			value float64
+			value      float64
 		}
 		var pctiles []percentileData
 		for _, p := range percentiles {
 			percentile, err := s.Percentile(p)
-			stuff := fmt.Sprintf("%.6f",p)
+			stuff := fmt.Sprintf("%.6f", p)
 			if err == nil {
-				pctiles = append(pctiles, percentileData{stuff,percentile})
+				pctiles = append(pctiles, percentileData{stuff, percentile})
 			}
 		}
 		data := struct {
-			Type string
-			Name string
+			Type        string
+			Name        string
 			Percentiles []percentileData
 		}{
 			"statstimer",
@@ -154,157 +144,5 @@ func (m *MetricContext)  HttpJsonHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Write([]byte("]"))
-        w.Write([]byte("\n")) // Be nice to curl
-}
-
-// BasicCounter is a minimal counter - all operations are atomic
-func (m *MetricContext) NewBasicCounter(name string) *BasicCounter {
-	c := new(BasicCounter)
-	c.m = m
-	c.Reset()
-	return c
-}
-
-type BasicCounter struct {
-	v uint64
-	m *MetricContext
-}
-
-// Reset counter to zero
-func (c *BasicCounter) Reset() {
-	atomic.StoreUint64(&c.v, 0)
-}
-
-// Set counter to value v.
-func (c *BasicCounter) Set(v uint64) {
-	atomic.StoreUint64(&c.v, v)
-}
-
-// Add delta to counter value v
-func (c *BasicCounter) Add(delta uint64) {
-	atomic.AddUint64(&c.v, delta)
-}
-
-// Get value of counter
-func (c *BasicCounter) Get() uint64 {
-	return c.v
-}
-
-// Counters
-// Counters differ from BasicCounter by having additional
-// fields for computing rate
-// All basic counter operations are atomic and no locks are held
-
-func (m *MetricContext) NewCounter(name string) *Counter {
-	c := new(Counter)
-	c.m = m
-	c.Reset()
-	c.Register(name)
-	return c
-}
-
-// 
-func (c *Counter) Register(name string) {
-	c.m.Counters[name] = c
-}
-
-func (c *Counter) Reset() {
-	c.rate = 0.0
-	c.ticks_p = 0
-	c.ticks_v = 0
-	c.v = 0
-	c.p = 0
-}
-
-// Set Counter value. This is useful if you are reading a metric
-// that is already a counter
-func (c *Counter) Set(v uint64) {
-	c.ticks_v = c.m.ticks
-	atomic.StoreUint64(&c.v, v)
-
-	// baseline for rate calculation
-	if c.ticks_p == 0 {
-		c.p = c.v
-		c.ticks_p = c.ticks_v
-	}
-}
-
-// Add value to counter
-func (c *Counter) Add(delta uint64) {
-	c.ticks_v = c.m.ticks
-	atomic.AddUint64(&c.v, delta)
-
-	// baseline for rate calculation
-	if c.ticks_p == 0 {
-		c.p = c.v
-		c.ticks_p = c.ticks_v
-	}
-}
-
-// Get value of counter
-func (c *Counter) Get() uint64 {
-	return c.v
-}
-
-// ComputeRate() calculates the rate of change of counter per
-// second. (acquires a lock)
-// Since we avoid locking on Set/Add operations, rate can be
-// inaccurate on highly contended threads
-
-func (c *Counter) ComputeRate() float64 {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	rate := 0.0
-
-	delta_t := c.ticks_v - c.ticks_p
-	delta_v := c.v - c.p
-
-	// we have two samples, compute rate and
-	// cache it away
-	if delta_t > 0 && c.v >= c.p {
-		rate = (float64(delta_v) / float64(delta_t)) * NS_IN_SEC
-		// update baseline
-		c.p = c.v
-		c.ticks_p = c.ticks_v
-		// cache rate calculated
-		c.rate = rate
-	}
-
-	return c.rate
-}
-
-// Gauges
-
-// NewGauge initializes a Gauge and returns it
-func (m *MetricContext) NewGauge(name string) *Gauge {
-	g := new(Gauge)
-	g.m = m
-	g.Register(name)
-	g.Reset()
-	return g
-}
-
-// 
-func (g *Gauge) Register(name string) {
-	g.m.Gauges[name] = g
-}
-
-//
-func (g *Gauge) Reset() {
-	g.v = math.NaN()
-}
-
-// Set value of Gauge
-func (g *Gauge) Set(v float64) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	g.v = v
-}
-
-// Get value of Gauge
-func (g *Gauge) Get() float64 {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	return g.v
+	w.Write([]byte("\n")) // Be nice to curl
 }

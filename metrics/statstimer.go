@@ -10,6 +10,32 @@ import (
 	"time"
 )
 
+/* StatsTimer
+
+A StatTimer can be used to compute statistics for a timed operation
+Arguments:
+  name string - name of the timer
+  timeUnit time.Duration - time unit to report statistics on
+  nsamples int - number of samples to keep in-memory for stats computation
+
+Example use:
+  m := metrics.NewMetricContext("webapp")
+  s := m.NewStatsTimer("latency", time.Millisecond, 100)
+
+  func (wa *WebApp)  HandleQuery(w http.ResponseWriter, r *http.Request) {
+	  stopWatch := s.Start()
+	  .....
+	  s.Stop(stopWatch)
+  }
+
+  pctile_95th, err := s.Percentile(95)
+
+  if err == nil {
+  	fmt.Printf("95th percentile latency: ", pctile_95th)
+  }
+
+*/
+
 type StatsTimer struct {
 	history  []int64
 	idx      int
@@ -21,9 +47,8 @@ type StatsTimer struct {
 
 const NOT_INITIALIZED = -1
 
-// StatsTimer
 func (m *MetricContext) NewStatsTimer(
-		name string, timeUnit time.Duration, nsamples int) *StatsTimer {
+	name string, timeUnit time.Duration, nsamples int) *StatsTimer {
 
 	s := new(StatsTimer)
 	s.K = name
@@ -90,7 +115,7 @@ func (s *StatsTimer) Percentile(percentile float64) (float64, error) {
 	// Since slices are zero-indexed, we are naturally rounded up
 	nearest_rank := int((percentile / 100) * float64(filtLen))
 
-	if nearest_rank > filtLen {
+	if nearest_rank == filtLen {
 		nearest_rank = filtLen - 1
 	}
 

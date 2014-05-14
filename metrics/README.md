@@ -20,8 +20,7 @@ c := metrics.NewGauge(m)
 c.Set(12.0) // Set Value
 c.Get() // get Value
 
-// StatsTimer for measuring things like latencies
-
+// StatsTimer - useful for computing statistics on timed operations
 s := metrics.NewStatsTimer(m)
 
 t := s.Start() // returns a timer
@@ -34,6 +33,8 @@ func (* Webapp) ServeRequest(uri string) error {
 	// do something
 	s.Stop(t)
 }
-
-fmt.Println("Percentile latency for 75 pctile: ", s.Percentile(75))
+pctile_75th, err := s.Percentile(75)
+if err == nil {
+	fmt.Println("Percentile latency for 75 pctile: ", pctile_75th)
+}
 ```

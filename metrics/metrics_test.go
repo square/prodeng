@@ -6,7 +6,6 @@ import "testing"
 import "time"
 import "math"
 import "sync"
-import "fmt"
 
 // BUG: This test will most likely fail on a highly loaded
 // system
@@ -85,7 +84,6 @@ func TestStatsTimer(t *testing.T) {
 		x := i + 1
 		go func() {
 			defer wg.Done()
-			fmt.Println(x, time.Now())
 			stopWatch := s.Start()
 			time.Sleep(time.Millisecond * time.Duration(x) * 10)
 			s.Stop(stopWatch)
