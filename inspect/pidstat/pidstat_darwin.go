@@ -209,7 +209,7 @@ func NewPerProcessStat(m *metrics.MetricContext, p string) *PerProcessStat {
 	c := new(PerProcessStat)
 	c.m = m
 	c.pid = p
-	c.Metrics = NewPerProcessStatMetrics(m)
+	c.Metrics = NewPerProcessStatMetrics(m, p)
 	return c
 }
 
@@ -245,10 +245,10 @@ type PerProcessStatMetrics struct {
 	SystemTime      *metrics.Counter
 }
 
-func NewPerProcessStatMetrics(m *metrics.MetricContext) *PerProcessStatMetrics {
+func NewPerProcessStatMetrics(m *metrics.MetricContext, pid string) *PerProcessStatMetrics {
 	s := new(PerProcessStatMetrics)
 	// initialize all metrics
-	misc.InitializeMetrics(s, m)
+	misc.InitializeMetrics(s, m, "pidstat." + pid)
 	return s
 }
 
