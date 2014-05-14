@@ -81,8 +81,7 @@ func NewPerCgroupStat(m *metrics.MetricContext, path string, mp string) *PerCgro
 	c := new(PerCgroupStat)
 	c.m = m
 
-	prefix, _ := filepath.Rel(mp, path)
-	c.Metrics = NewPerCgroupStatMetrics(m, "cpustat.cgroup." + prefix)
+	c.Metrics = NewPerCgroupStatMetrics(m, path, mp)
 
 	return c
 }
@@ -115,12 +114,13 @@ type PerCgroupStatMetrics struct {
 	path           string
 }
 
-func NewPerCgroupStatMetrics(m *metrics.MetricContext, path string) *PerCgroupStatMetrics {
+func NewPerCgroupStatMetrics(m *metrics.MetricContext, path string, mp string) *PerCgroupStatMetrics {
 	c := new(PerCgroupStatMetrics)
 	c.path = path
 
 	// initialize all metrics
-	misc.InitializeMetrics(c, m, path)
+	prefix, _ := filepath.Rel(mp, path)
+	misc.InitializeMetrics(c, m, "cpustat.cgroup." + prefix)
 
 	return c
 }
