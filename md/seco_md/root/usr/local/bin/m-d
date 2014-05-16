@@ -1,0 +1,189 @@
+#!/usr/local/bin/perl
+
+#Copyright (c) 2011, Yahoo! Inc. All rights reserved.
+
+#This program is free software. You may copy or redistribute it under the same terms as Perl itself. Please see the LICENSE file included with this project for the terms of the Artistic License under which this project is licensed. 
+
+use strict;
+use warnings FATAL => qw/uninitialized/;
+
+
+use Seco::MD;
+use Seco::Getopt;
+use Seco::Data::Range;
+use YAML::Syck;
+
+my $r        = Seco::Data::Range::->new();
+my $ssh_opts = {  'ConnectTimeout' => '10','BatchMode' => 'yes',
+		          'ForwardAgent' => 'yes','Port' => '22', 
+	              'StrictHostKeyChecking' => 'no',
+               };
+
+my $opt = Seco::Getopt->new(
+    required => [qw//],
+    default  => {
+        'd' => '/tmp/',
+        'l' => '3',
+        'n' => '1',
+        'f' => '-1',
+        'm' => '200',
+        'z' => '300',
+        'a' => 1,
+        'so' => $ssh_opts,
+        'S'  => '/usr/bin/ssh',
+    },
+    options => {
+        'd|dest=s'                  => "destination directory",
+        'sr|dedicated_seeds=s'      => "dedicated sources; no other node will act as source",
+        'ir|initial_seeds=s'        => "initial sources; used by m-d to for the first file transfer",
+        'm|maxflight=i'             => "maximum number of file transfers at any time",
+        'l|maxuploads=i'            => "maximum uploads from a node",
+        'a|adjust_max_uploads=i'    => "maximum uploads from a node are adjusted downwards 
+                                        if no of haves  > maxuploads * havenots",
+        'n|retries=i'               => "maximum re-tries allowed per node",
+        'f|failures=i'              => "maximum failures to tolerate [cumulative]",
+        'z|timeout=i'               => "timeout for each file transfer",
+        'g|globaltimeout=i'         => "global timeout for $0",
+        'v|verbose'                 => "verbose",
+        'V|debug'                   => "really verbose",
+        'D|dryrun'                  => "dryrun",
+        'e|rpath=s'                 => "remote rsync source path available via rsync daemon",
+        'p|password-file=s'         => "password file to authenticate with rsync daemon",
+        'so|sshopts=s%'             => 'options to SSH; can be specified  multiple times',
+        'S|ssh=s'                   => 'path to SSH',  
+        'G|gdt'                     => 'shortcut mode for user=gdt;port=2222;ssh_bin=/usr/bin/ssh-2222',  
+    }
+);
+
+$opt->usage ("usage: $0 [options] range src") 
+  if (@ARGV !=2 );
+
+my ( $range, $source )   = @ARGV;
+
+
+my $ssh                  = $opt->get('S');
+$ssh_opts->{$_}          = $opt->get('so')->{$_}
+                            foreach (keys %{$opt->get('so')});
+
+my $initssh = $ssh;
+my $initssh_opts = {%$ssh_opts};
+
+if ($opt->get('G')) {
+  $initssh                          = '/usr/bin/ssh-2222';
+  $initssh_opts->{'Port'}           = 2222;
+  $initssh_opts->{'IdentityFile'}   = '/home/gdt/.ssh/id_rsa';
+  $initssh_opts->{'User'}           = 'gdt';
+  $initssh_opts->{'StrictHostKeyChecking'}           = 'no';
+  system ('ssh-add','-t','1800',$initssh_opts->{'IdentityFile'}) == 0
+    or warn 'warning: unable to add identity file to your agent';
+}
+
+
+die "need --rpath as well as --dest for m-d to use rsync daemon mode"
+  if ( $opt->get('e') && !$opt->get('d') );
+
+my $md = Seco::MD::->new(
+    range                   => $range,
+    source                  => $source,
+    destination_dir         => $opt->get('d'),
+    initial_seeds           => $opt->get('ir') ? [$r->expand ($opt->get('ir'))] : [],
+    dedicated_seeds         => $opt->get('sr') ? [$r->expand ($opt->get('sr'))] : [],
+
+    verbose                 => $opt->get('v'),
+    adjust_maxupload_ratio  => $opt->get('a'),
+    max_retries             => $opt->get('n'),
+    max_failures            => $opt->get('f'),
+    mcmd_maxflight          => $opt->get('m'),
+    mcmd_node_timeout       => $opt->get('z'),
+    mcmd_global_timeout     => $opt->get('g'),
+    dryrun                  => $opt->get('D'),
+    rsync_remote_path       => $opt->get('e'),
+    debug                   => $opt->get('V'),
+
+    ssh                     => [$ssh, map { ('-o', "$_=$ssh_opts->{$_}") } keys %{$ssh_opts}  ],
+    initssh                 => [$initssh, map { ('-o', "$_=$initssh_opts->{$_}") } keys %{$initssh_opts}  ],
+
+);
+
+$md->run;
+
+print YAML::Syck::Dump ( { success  => $r->compress ($md->ok), failed => $r->compress($md->not_ok) });
+
+__END__
+
+=head1 NAME
+
+<m-d> - <centrally controlled file duplication across multiple nodes>
+
+=head1 VERSION
+
+This documentation refers to <m-d> revision $Rev$
+
+=head1 USAGE
+
+     # duplicate [src] to [dst]/[src]
+      m-d --dryrun --debug --dest=/dst/  range src
+
+     # samething but use rsync modules for downloading
+     # duplicate [src] to [ remotehost::module/dir/[src] ] eq [ [dst]/[src] ]
+     # we need both --dest and --rpath for syncing to a module
+     m-d --dryrun --debug --dest=/dst/ --rpath=module/dir/ range src
+
+     remove --dryrun if you are happy with what you see; dryrun fails
+     after first iteration.thanks rsync.
+
+     NOTE: running as root is DANGEROUS.
+
+=head1 REQUIRED ARGUMENTS
+    
+    range  - target range of hosts 
+    source - path to source
+
+
+=head1 OPTIONS
+    
+    m-d --help
+
+=head1 DESCRIPTION
+
+    duplicate a file tree across multiple nodes using a peer-to-peer mechanism
+    refer to Seco::MD for documentation on algorithm used
+    
+
+=head1 DIAGNOSTICS
+
+    tbd
+
+
+=head1 CONFIGURATION AND ENVIRONMENT
+   
+   <m-d> assumes that your SSH keys are setup to work without prompt
+    
+
+=head1 DEPENDENCIES
+
+    Seco::MD
+    Seco::MultipleCmd 
+    Seco::Getopt
+    Seco::Data::Range
+    List::Util
+    rsync
+    ssh
+
+=head1 INCOMPATIBILITIES
+
+    None.
+
+=head1 BUGS AND LIMITATIONS
+
+    You tell me.
+
+=head1 AUTHOR
+    
+    <syam@yahoo-inc.com>
+    Last edited by: $Author$
+
+=head1 LICENCE AND COPYRIGHT
+
+    Yahoo! Confidential
+    Copyright (c) 2011, Yahoo! Inc. All rights reserved.

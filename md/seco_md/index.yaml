@@ -1,0 +1,10 @@
+---
+default:
+  name: seco-md
+  summary: multiphasic-duplicate
+  version: '1.0'
+  arch: noarch
+  requires: 
+    - perl-seco-data-range
+    - perl-seco-multiplecmd
+    - perl-seco-md
