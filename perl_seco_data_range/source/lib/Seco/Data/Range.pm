@@ -30,7 +30,7 @@ sub new {
     # override default arguments with user supplied hash
     my %args = (
         'server'    => $default_server,
-        'port'      => 9999,
+        'port'      => 80,
         'timeout'   => 10,
         'useragent' => $0,
         'list'      => undef,

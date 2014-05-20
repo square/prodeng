@@ -1,0 +1,5 @@
+default:
+  name: perl-seco-multiplecmd
+  version: '1.0'
+  summary: Seco::MultipleCmd
+  arch: noarch

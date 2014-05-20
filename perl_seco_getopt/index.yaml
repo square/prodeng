@@ -1,0 +1,5 @@
+default:
+  name: perl-seco-getopt
+  version: '1.0'
+  summary: Seco::Getopt
+  arch: noarch
