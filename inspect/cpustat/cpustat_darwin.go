@@ -90,7 +90,11 @@ func (o *CPUStat) Kernel() float64 {
 // per CPU statistics
 func CPUStatPerCPUNew(m *metrics.MetricContext, cpu string) *CPUStatPerCPU {
 	o := new(CPUStatPerCPU)
-	misc.InitializeMetrics(o, m, "cpustat." + cpu)
+	// initialize metrics and register
+	// XXX: need to adopt it to similar to linux and pass
+	// cpu name as argument when we are collecting per cpu
+	// information
+	misc.InitializeMetrics(o, m, "cpustat.cpu", true)
 	return o
 }
 

@@ -60,9 +60,24 @@ func PrintOsDependent(s *LinuxStats, batchmode bool) {
 
 	fmt.Println("---")
 	for iface, o := range s.ifstat.Interfaces {
-		fmt.Printf("iface: %s TX: %s/s, RX: %s/s\n", iface,
+		fmt.Printf("iface: %s TX: %3.1f%% (%s/s), RX: %3.1f%% (%s/s)\n",
+			iface,
+			o.TXBandwidthUsage(),
 			misc.BitSize(o.TXBandwidth()),
+			o.RXBandwidthUsage(),
 			misc.BitSize(o.RXBandwidth()))
+
+		if o.TXBandwidthUsage() > 75.0 {
+			problems = append(problems,
+				fmt.Sprintf("TX bandwidth usage on (%v): %3.1f%%",
+					iface, o.TXBandwidthUsage()))
+		}
+
+		if o.RXBandwidthUsage() > 75.0 {
+			problems = append(problems,
+				fmt.Sprintf("RX bandwidth usage on (%v): %3.1f%%",
+					iface, o.RXBandwidthUsage()))
+		}
 	}
 
 	fmt.Println("---")

@@ -110,7 +110,8 @@ func (o *CPUStat) PerCPUStat(cpu string) *CPUStatPerCPU {
 func NewCPUStatPerCPU(m *metrics.MetricContext, name string) *CPUStatPerCPU {
 	o := new(CPUStatPerCPU)
 
-	misc.InitializeMetrics(o, m, "cpustat." + name)
+	// initialize all metrics and register them
+	misc.InitializeMetrics(o, m, "cpustat."+name, true)
 	return o
 }
 

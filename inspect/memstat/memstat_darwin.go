@@ -78,7 +78,7 @@ func MemStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MemStatMet
 	c := new(MemStatMetrics)
 
 	// initialize all gauges
-	misc.InitializeMetrics(c, m, "memstat")
+	misc.InitializeMetrics(c, m, "memstat", true)
 
 	host := C.mach_host_self()
 	C.host_page_size(C.host_t(host), &c.Pagesize)
