@@ -118,9 +118,9 @@ func NewPerCgroupStatMetrics(m *metrics.MetricContext, path string, mp string) *
 	c := new(PerCgroupStatMetrics)
 	c.path = path
 
-	// initialize all metrics
+	// initialize all metrics and register them
 	prefix, _ := filepath.Rel(mp, path)
-	misc.InitializeMetrics(c, m, "cpustat.cgroup." + prefix)
+	misc.InitializeMetrics(c, m, "cpustat.cgroup."+prefix, true)
 
 	return c
 }

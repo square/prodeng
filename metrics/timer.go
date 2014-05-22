@@ -12,7 +12,7 @@ type Timer struct {
 }
 
 // Timer
-func (m *MetricContext) NewTimer() *Timer {
+func NewTimer() *Timer {
 	t := new(Timer)
 	return t
 }

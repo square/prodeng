@@ -92,7 +92,8 @@ type MemStatMetrics struct {
 func MemStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MemStatMetrics {
 	c := new(MemStatMetrics)
 
-	misc.InitializeMetrics(c, m, "memstat")
+	// initialize all metrics and register them
+	misc.InitializeMetrics(c, m, "memstat", true)
 
 	// collect once
 	c.Collect()

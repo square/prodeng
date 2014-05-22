@@ -15,6 +15,8 @@ import (
 	"github.com/square/prodeng/metrics"
 	"log"
 	"net/http"
+	"runtime"
+	"runtime/debug"
 	"time"
 )
 
@@ -87,7 +89,7 @@ func main() {
 	// platforms yet
 	d := osmain.RegisterOsDependent(m, step, osind)
 
-	// run http server 
+	// run http server
 	if servermode {
 		go func() {
 			http.HandleFunc("/metrics.json", m.HttpJsonHandler)
@@ -164,5 +166,9 @@ func main() {
 			fmt.Println("Problem: ", msg)
 		}
 
+		// be aggressive about reclaiming memory
+		// tradeoff with CPU usage
+		runtime.GC()
+		debug.FreeOSMemory()
 	}
 }

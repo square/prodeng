@@ -11,26 +11,13 @@ import (
 type Gauge struct {
 	v  float64
 	mu sync.RWMutex
-	m  *MetricContext
 }
 
 // NewGauge initializes a Gauge and returns it
-func (m *MetricContext) NewGauge(name string) *Gauge {
+func NewGauge() *Gauge {
 	g := new(Gauge)
-	g.m = m
-	g.Register(name)
 	g.Reset()
 	return g
-}
-
-// Register() with metrics context with name
-// Usually called from NewGauge but useful if you have to
-// re-use and existing object
-func (g *Gauge) Register(name string) {
-	if name == "" {
-		return
-	}
-	g.m.Gauges[name] = g
 }
 
 // Reset() all values are reset to defaults

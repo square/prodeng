@@ -143,14 +143,14 @@ type PerCgroupStatMetrics struct {
 }
 
 func NewPerCgroupStatMetrics(m *metrics.MetricContext,
-		path string, mp string) *PerCgroupStatMetrics {
+	path string, mp string) *PerCgroupStatMetrics {
 
 	c := new(PerCgroupStatMetrics)
 	c.path = path
 
 	prefix, _ := filepath.Rel(mp, path)
-	// initialize all metrics
-	misc.InitializeMetrics(c, m, "memstat.cgroup." + prefix)
+	// initialize all metrics and register them
+	misc.InitializeMetrics(c, m, "memstat.cgroup."+prefix, true)
 
 	return c
 }
