@@ -247,8 +247,8 @@ type PerProcessStatMetrics struct {
 
 func NewPerProcessStatMetrics(m *metrics.MetricContext) *PerProcessStatMetrics {
 	s := new(PerProcessStatMetrics)
-	// initialize all metrics
-	misc.InitializeMetrics(s, m)
+	// initialize all metrics and do NOT register for now
+	misc.InitializeMetrics(s, m, "pidstat.", false)
 	return s
 }
 

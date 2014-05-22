@@ -4,7 +4,7 @@ import "unsafe"
 import "time"
 import "math"
 import "github.com/square/prodeng/metrics"
-import _ "github.com/square/prodeng/inspect/misc"
+import "github.com/square/prodeng/inspect/misc"
 
 // TODO: Per CPU stats - are they available?
 
@@ -90,11 +90,11 @@ func (o *CPUStat) Kernel() float64 {
 // per CPU statistics
 func CPUStatPerCPUNew(m *metrics.MetricContext) *CPUStatPerCPU {
 	o := new(CPUStatPerCPU)
-	o.User = m.NewCounter("User")
-	o.UserLowPrio = m.NewCounter("UserLowPrio")
-	o.System = m.NewCounter("System")
-	o.Idle = m.NewCounter("Idle")
-	o.Total = m.NewCounter("Total")
+	// initialize metrics and register
+	// XXX: need to adopt it to similar to linux and pass
+	// cpu name as argument when we are collecting per cpu
+	// information
+	misc.InitializeMetrics(o, m, "cpustat.cpu", true)
 	return o
 }
 
