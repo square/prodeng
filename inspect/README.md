@@ -118,7 +118,7 @@ fmt.Println(cstat.Usage())
 ```
 
 ###### Todo
-
+  * Rules for inspection need to seperated out into user supplied code/config. Currently inspect command line has hard-coded guesswork
   * PerProcessStat on darwin doesn't include optimizations done for Linux. 
   * Add intelligence to find problems. Start with easy ones like CPU usage
   * Command line utility needs much nicer formatting and options to dig into per process/cgroup details
