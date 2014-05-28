@@ -14,7 +14,6 @@ import (
 
 A StatTimer can be used to compute statistics for a timed operation
 Arguments:
-  name string - name of the timer
   timeUnit time.Duration - time unit to report statistics on
   nsamples int - number of samples to keep in-memory for stats computation
 
@@ -39,23 +38,19 @@ Example use:
 type StatsTimer struct {
 	history  []int64
 	idx      int
-	m        *MetricContext
 	mu       sync.RWMutex
 	timeUnit time.Duration
 }
 
 const NOT_INITIALIZED = -1
 
-func (m *MetricContext) NewStatsTimer(
-	name string, timeUnit time.Duration, nsamples int) *StatsTimer {
+func NewStatsTimer(timeUnit time.Duration, nsamples int) *StatsTimer {
 
 	s := new(StatsTimer)
-	s.m = m
 	s.timeUnit = timeUnit
 	s.history = make([]int64, nsamples)
 
 	s.Reset()
-	s.Register(name)
 
 	return s
 }
@@ -66,16 +61,8 @@ func (s *StatsTimer) Reset() {
 	}
 }
 
-func (s *StatsTimer) Register(name string) {
-	// dont register anonymous
-	if name == "" {
-		return
-	}
-	s.m.StatsTimers[name] = s
-}
-
 func (s *StatsTimer) Start() *Timer {
-	t := s.m.NewTimer()
+	t := NewTimer()
 	t.Start()
 	return t
 }

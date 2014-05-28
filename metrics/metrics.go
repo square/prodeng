@@ -58,6 +58,36 @@ func NewMetricContext(namespace string) *MetricContext {
 	return m
 }
 
+// Register(v Metric) registers a metric with metric
+// context
+func (m *MetricContext) Register(v interface{}, name string) {
+	switch v := v.(type) {
+	case *BasicCounter:
+		m.BasicCounters[name] = v
+	case *Counter:
+		m.Counters[name] = v
+	case *Gauge:
+		m.Gauges[name] = v
+	case *StatsTimer:
+		m.StatsTimers[name] = v
+	}
+}
+
+// Unregister(v Metric) unregisters a metric with metric
+// context
+func (m *MetricContext) Unregister(v interface{}, name string) {
+	switch v.(type) {
+	case *BasicCounter:
+		delete(m.BasicCounters, name)
+	case *Counter:
+		delete(m.Counters, name)
+	case *Gauge:
+		delete(m.Gauges, name)
+	case *StatsTimer:
+		delete(m.StatsTimers, name)
+	}
+}
+
 // Print() prints ALL metrics to stdout
 func (m *MetricContext) Print() {
 	for name, c := range m.Counters {

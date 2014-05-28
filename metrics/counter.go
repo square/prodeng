@@ -15,29 +15,15 @@ type Counter struct {
 	ticks_p int64
 	ticks_v int64
 	mu      sync.RWMutex
-	m       *MetricContext
 }
 
 // Counters differ from BasicCounter by having additional
 // fields for computing rate
 // All basic counter operations are atomic and no locks are held
-func (m *MetricContext) NewCounter(name string) *Counter {
+func NewCounter() *Counter {
 	c := new(Counter)
-	c.m = m
 	c.Reset()
-	c.Register(name)
 	return c
-}
-
-// Register() with metrics context with name
-// Usually called from NewCounter but useful if you have to
-// re-use and existing object
-func (c *Counter) Register(name string) {
-	if name == "" {
-		return
-	}
-	c.m.Counters[name] = c
-
 }
 
 // Reset() - resets all internal variables to defaults

@@ -121,7 +121,8 @@ type PerDiskStatMetrics struct {
 func NewPerDiskStat(m *metrics.MetricContext, blkdev string) *PerDiskStat {
 	c := new(PerDiskStat)
 	c.Metrics = new(PerDiskStatMetrics)
-	misc.InitializeMetrics(c.Metrics, m, "diskstat." + blkdev)
+	// initialize all metrics and register them
+	misc.InitializeMetrics(c.Metrics, m, "diskstat."+blkdev, true)
 	return c
 }
 

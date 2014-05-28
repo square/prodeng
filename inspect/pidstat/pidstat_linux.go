@@ -5,6 +5,7 @@ package pidstat
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"github.com/square/prodeng/inspect/misc"
 	"github.com/square/prodeng/metrics"
 	"io/ioutil"
@@ -15,9 +16,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
-	"fmt"
 )
-
 
 /*
 #include <unistd.h>
@@ -152,10 +151,10 @@ func (c *ProcessStat) Collect() {
 	// remove dead processes
 	for k, v := range h {
 		if v.Metrics.dead {
+			v.Metrics.Unregister()
 			delete(h, k)
 		}
 	}
-
 }
 
 // unexported
@@ -309,24 +308,37 @@ type PerProcessStatMetrics struct {
 	Utime *metrics.Counter
 	Stime *metrics.Counter
 	Rss   *metrics.Gauge
+	m     *metrics.MetricContext
 	dead  bool
 }
 
 func NewPerProcessStatMetrics(m *metrics.MetricContext, pid string) *PerProcessStatMetrics {
 	s := new(PerProcessStatMetrics)
 	s.Pid = pid
+	s.m = m
 
-	// initialize all metrics
-	misc.InitializeMetrics(s, m, "IGNORE")
+	// initialize all metrics but do NOT register them
+	// registration happens if the objects pass user
+	// supplied filter
+	misc.InitializeMetrics(s, m, "IGNORE", false)
 
 	return s
 }
 
+// Register metrics with metric context
 func (s *PerProcessStatMetrics) Register() {
 	prefix := "pidstat.pid" + s.Pid
-	s.Utime.Register(prefix + "." + "Utime")
-	s.Stime.Register(prefix + "." + "Stime")
-	s.Rss.Register(prefix + "." + "Rss")
+	s.m.Register(s.Utime, prefix+"."+"Utime")
+	s.m.Register(s.Stime, prefix+"."+"Stime")
+	s.m.Register(s.Rss, prefix+"."+"Rss")
+}
+
+// Unregister metrics with metriccontext
+func (s *PerProcessStatMetrics) Unregister() {
+	prefix := "pidstat.pid" + s.Pid
+	s.m.Unregister(s.Utime, prefix+"."+"Utime")
+	s.m.Unregister(s.Stime, prefix+"."+"Stime")
+	s.m.Unregister(s.Rss, prefix+"."+"Rss")
 }
 
 func (s *PerProcessStatMetrics) Reset(pid string) {

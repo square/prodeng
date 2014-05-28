@@ -32,6 +32,8 @@ func New(m *metrics.MetricContext, Step time.Duration) *InterfaceStat {
 	return s
 }
 
+// Collect() collects interface metrics
+// TODO: perhaps use sysfs
 func (s *InterfaceStat) Collect() {
 	file, err := os.Open("/proc/net/dev")
 	defer file.Close()
@@ -79,6 +81,10 @@ func (s *InterfaceStat) Collect() {
 		d.TXframe.Set(tx[5])
 		d.TXcompressed.Set(tx[6])
 		d.TXmulticast.Set(tx[7])
+		speed := misc.ReadUintFromFile("/sys/class/net/" + dev + "/speed")
+		if speed > 0 {
+			d.Speed.Set(float64(speed))
+		}
 	}
 }
 
@@ -105,23 +111,41 @@ type PerInterfaceStatMetrics struct {
 	TXframe      *metrics.Counter
 	TXcompressed *metrics.Counter
 	TXmulticast  *metrics.Counter
+	Speed        *metrics.Gauge
 }
 
 func NewPerInterfaceStat(m *metrics.MetricContext, dev string) *PerInterfaceStat {
 	c := new(PerInterfaceStat)
 	c.Metrics = new(PerInterfaceStatMetrics)
-	misc.InitializeMetrics(c.Metrics, m, "interfacestat." + dev)
+	// initialize all metrics and register them
+	misc.InitializeMetrics(c.Metrics, m, "interfacestat."+dev, true)
 	return c
 }
 
-// Transmit bandwidth utilization in bits/sec
+// Recieve bandwidth utilization in bits/sec
 func (s *PerInterfaceStat) RXBandwidth() float64 {
 	o := s.Metrics
 	return (o.RXbytes.ComputeRate()) * 8
 }
 
-// Recieve bandwidth utilization in bits/sec
+// Transmit bandwidth utilization in bits/sec
 func (s *PerInterfaceStat) TXBandwidth() float64 {
 	o := s.Metrics
 	return (o.TXbytes.ComputeRate()) * 8
+}
+
+// Speed of interface in bits/sec
+func (s *PerInterfaceStat) Speed() float64 {
+	o := s.Metrics
+	return o.Speed.Get() * 1024 * 1024 // ethtool interface seems to report in Mb
+}
+
+// Recieve bandwidth usage as percentage
+func (s *PerInterfaceStat) RXBandwidthUsage() float64 {
+	return (s.RXBandwidth() / s.Speed()) * 100
+}
+
+// Transmit bandwidth usage as percentage
+func (s *PerInterfaceStat) TXBandwidthUsage() float64 {
+	return (s.TXBandwidth() / s.Speed()) * 100
 }
