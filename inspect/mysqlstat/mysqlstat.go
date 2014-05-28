@@ -9,13 +9,13 @@ package mysqlstat
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/square/prodeng/inspect/misc"
+	"github.com/square/prodeng/metrics"
 	"os"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/square/prodeng/inspect/misc"
-	"github.com/square/prodeng/metrics"
 )
 
 import "database/sql"
@@ -88,6 +88,7 @@ func (s *MysqlStat) query_return_columns_dict(query string) (map[string][]sql.Ra
 }
 
 func New(m *metrics.MetricContext, Step time.Duration, user string) (*MysqlStat, error) {
+	fmt.Println("starting")
 	s := new(MysqlStat)
 	// connect to database
 	err := s.connect(user)
@@ -96,6 +97,14 @@ func New(m *metrics.MetricContext, Step time.Duration, user string) (*MysqlStat,
 	}
 	s.Metrics = MysqlStatMetricsNew(m, Step)
 
+	err = s.db.Ping()
+	if err != nil {
+		fmt.Println("Cant ping database")
+		fmt.Println(err)
+	}
+
+	defer s.db.Close()
+	fmt.Println("starting collect")
 	s.Collect()
 
 	ticker := time.NewTicker(Step)
@@ -109,6 +118,7 @@ func New(m *metrics.MetricContext, Step time.Duration, user string) (*MysqlStat,
 }
 
 func MysqlStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MysqlStatMetrics {
+	//fmt.Println("starting")
 	c := new(MysqlStatMetrics)
 	misc.InitializeMetrics(c, m, "mysqlstat") //, true)
 	return c
@@ -118,14 +128,16 @@ func make_dsn(dsn map[string]string) string {
 	var dsn_string string
 	user, ok := dsn["user"]
 	if ok {
-		dsn_string = user + ":"
+		dsn_string = user
 	}
 	password, ok := dsn["password"]
 	if ok {
-		dsn_string = dsn_string + password + "@"
+		dsn_string = dsn_string + ":" + password
 	}
+	dsn_string = dsn_string + "@"
 	dsn_string = dsn_string + dsn["unix_socket"]
 	dsn_string = dsn_string + "/" + dsn["db"]
+	fmt.Println("dsn string: " + dsn_string)
 	return dsn_string
 }
 
@@ -144,6 +156,7 @@ func (s *MysqlStat) connect(user string) error {
 	}
 	db, err := sql.Open("mysql", make_dsn(dsn))
 	if err == nil {
+		fmt.Println("opened database without password")
 		s.db = db
 		return nil
 	}
@@ -171,25 +184,37 @@ func (s *MysqlStat) Collect() {
 
 // get_slave_stats gets slave statistics
 func (s *MysqlStat) get_slave_stats() error {
-	res, err := s.query_return_columns_dict("SHOW SLAVE STATUS;")
+	res, _ := s.query_return_columns_dict("SHOW SLAVE STATUS;")
+	fmt.Println("Result when querying 'SHOW SLAVE STATUS;'")
+	fmt.Println(res)
 
-	seconds_behind_master, err := strconv.Atoi(string(res["Seconds_Behind_Master"][0]))
-	s.Metrics.SecondsBehindMaster.Set(float64(seconds_behind_master))
+	if len(res["Seconds_Behind_Master"]) > 0 {
+		seconds_behind_master, _ := strconv.Atoi(string(res["Seconds_Behind_Master"][0]))
+		s.Metrics.SecondsBehindMaster.Set(float64(seconds_behind_master))
+	} else {
+		fmt.Println("no seconds behind master data")
+	}
 
 	relay_master_log_file, _ := res["Relay_Master_Log_File"]
+	if len(relay_master_log_file) > 0 {
+		slave_seqfile, err := strconv.Atoi(strings.Split(string(relay_master_log_file[0]), ".")[1])
+		s.Metrics.SlaveSeqFile.Set(float64(slave_seqfile))
 
-	slave_seqfile, err := strconv.Atoi(strings.Split(string(relay_master_log_file[0]), ".")[1])
-	s.Metrics.SlaveSeqFile.Set(float64(slave_seqfile))
-
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
+	} else {
+		fmt.Println("no relay master log file")
 	}
 
-	slave_position, err := strconv.Atoi(string(res["Exec_Master_Log_Pos"][0]))
-	if err != nil {
-		return err
+	if len(res["Exec_Master_Log_Pos"]) > 0 {
+		slave_position, err := strconv.Atoi(string(res["Exec_Master_Log_Pos"][0]))
+		if err != nil {
+			return err
+		}
+		s.Metrics.SlavePosition.Set(float64(slave_position))
+	} else {
+		fmt.Println("no Exec_Master_Log_Pos")
 	}
-	s.Metrics.SlavePosition.Set(float64(slave_position))
-
 	return nil
 }
