@@ -65,6 +65,8 @@ mem: 7.34MB command: (bash) user: s pid: 6478
 diskio: sr0 usage: 0.0%
 diskio: sda usage: 0.0%
 diskio: sdb usage: 92.7%
+fs: / usage: 84.5%
+fs: /data usage: 63.1%
 ---
 iface: lo TX: 0.00b/s, RX: 0.00b/s
 iface: eth0 TX: 6.77Kb/s, RX: 1.03Kb/s

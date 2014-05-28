@@ -8,17 +8,20 @@ import (
 	"github.com/mgutz/ansi"
 	"github.com/square/prodeng/inspect/cpustat"
 	"github.com/square/prodeng/inspect/diskstat"
+	"github.com/square/prodeng/inspect/fsstat"
 	"github.com/square/prodeng/inspect/interfacestat"
 	"github.com/square/prodeng/inspect/memstat"
 	"github.com/square/prodeng/inspect/misc"
 	"github.com/square/prodeng/inspect/pidstat"
 	"github.com/square/prodeng/metrics"
+	"math"
 	"path/filepath"
 	"time"
 )
 
 type LinuxStats struct {
 	dstat  *diskstat.DiskStat
+	fsstat *fsstat.FSStat
 	ifstat *interfacestat.InterfaceStat
 	cg_mem *memstat.CgroupStat
 	cg_cpu *cpustat.CgroupStat
@@ -31,6 +34,7 @@ func RegisterOsDependent(m *metrics.MetricContext, step time.Duration,
 
 	s := new(LinuxStats)
 	s.dstat = diskstat.New(m, step)
+	s.fsstat = fsstat.New(m, step)
 	s.ifstat = interfacestat.New(m, step)
 	s.procs = d.Procs // grab it because we need to for per cgroup cpu usage
 	s.cstat = d.Cstat
@@ -55,6 +59,24 @@ func PrintOsDependent(s *LinuxStats, batchmode bool) {
 		if o.Usage() > 75.0 {
 			problems = append(problems,
 				fmt.Sprintf("Disk IO usage on (%v): %3.1f%%", d, o.Usage()))
+		}
+	}
+
+	for path, o := range s.fsstat.FS {
+
+		if math.IsNaN(o.Usage()) {
+			continue
+		}
+
+		fmt.Printf("fs: %s usage: %3.1f%%\n", path, o.Usage())
+		if o.Usage() > 90.0 {
+			problems = append(problems,
+				fmt.Sprintf("FS block usage on (%v): %3.1f%%", path, o.Usage()))
+		}
+
+		if o.FileUsage() > 90.0 {
+			problems = append(problems,
+				fmt.Sprintf("FS file usage on (%v): %3.1f%%", path, o.FileUsage()))
 		}
 	}
 
