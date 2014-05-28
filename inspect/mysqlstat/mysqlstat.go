@@ -10,12 +10,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/square/prodeng/inspect/misc"
-	"github.com/square/prodeng/metrics"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/square/prodeng/inspect/misc"
+	"github.com/square/prodeng/metrics"
 )
 
 import "database/sql"
@@ -36,9 +37,12 @@ type MysqlStat struct {
 }
 
 type MysqlStatMetrics struct {
-	SecondsBehindMaster *metrics.Gauge
-	SlaveSeqFile        *metrics.Gauge
-	SlavePosition       *metrics.Gauge
+	SecondsBehindMaster    *metrics.Gauge
+	SlaveSeqFile           *metrics.Gauge
+	SlavePosition          *metrics.Gauge
+	ThreadsRunning         *metrics.Gauge
+	UptimeSinceFlushStatus *metrics.Gauge
+	OpenTables             *metrics.Gauge
 }
 
 //makes a query to the database
@@ -87,11 +91,24 @@ func (s *MysqlStat) query_return_columns_dict(query string) (map[string][]sql.Ra
 	return result, err
 }
 
-func New(m *metrics.MetricContext, Step time.Duration, user string) (*MysqlStat, error) {
+func (s *MysqlStat) query_map_first_column_to_row(query string) (map[string][]sql.RawBytes, error) {
+	_, values, err := s.make_query(query)
+	result := make(map[string][]sql.RawBytes)
+	for i, name := range values[0] {
+		for j, vals := range values {
+			if j != 0 {
+				result[string(name)] = append(result[string(name)], vals[i])
+			}
+		}
+	}
+	return result, err
+}
+
+func New(m *metrics.MetricContext, Step time.Duration, user string, password string) (*MysqlStat, error) {
 	fmt.Println("starting")
 	s := new(MysqlStat)
 	// connect to database
-	err := s.connect(user)
+	err := s.connect(user, password)
 	if err != nil { //error in connecting to database
 		return nil, err
 	}
@@ -120,7 +137,7 @@ func New(m *metrics.MetricContext, Step time.Duration, user string) (*MysqlStat,
 func MysqlStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MysqlStatMetrics {
 	//fmt.Println("starting")
 	c := new(MysqlStatMetrics)
-	misc.InitializeMetrics(c, m, "mysqlstat") //, true)
+	misc.InitializeMetrics(c, m, "mysqlstat", true)
 	return c
 }
 
@@ -141,7 +158,7 @@ func make_dsn(dsn map[string]string) string {
 	return dsn_string
 }
 
-func (s *MysqlStat) connect(user string) error {
+func (s *MysqlStat) connect(user, password string) error {
 	dsn := map[string]string{"db": "information_schema"}
 	creds := map[string]string{"root": "/root/.my.cnf", "nrpe": "/etc/my_nrpe.cnf"}
 	if user == "" {
@@ -149,6 +166,9 @@ func (s *MysqlStat) connect(user string) error {
 		dsn["user"] = DEFAULT_MYSQL_USER
 	} else {
 		dsn["user"] = user
+	}
+	if password != "" {
+		dsn["password"] = password
 	}
 	socket_file := "/var/lib/mysql/mysql.sock"
 	if _, err := os.Stat(socket_file); err == nil {
@@ -180,13 +200,14 @@ func (s *MysqlStat) connect(user string) error {
 
 func (s *MysqlStat) Collect() {
 	s.get_slave_stats()
+	s.get_global_status()
 }
 
 // get_slave_stats gets slave statistics
 func (s *MysqlStat) get_slave_stats() error {
 	res, _ := s.query_return_columns_dict("SHOW SLAVE STATUS;")
-	fmt.Println("Result when querying 'SHOW SLAVE STATUS;'")
-	fmt.Println(res)
+	//	fmt.Println("Result when querying 'SHOW SLAVE STATUS;'")
+	//	fmt.Println(res)
 
 	if len(res["Seconds_Behind_Master"]) > 0 {
 		seconds_behind_master, _ := strconv.Atoi(string(res["Seconds_Behind_Master"][0]))
@@ -216,5 +237,37 @@ func (s *MysqlStat) get_slave_stats() error {
 	} else {
 		fmt.Println("no Exec_Master_Log_Pos")
 	}
+	return nil
+}
+
+func (s *MysqlStat) get_global_status() error {
+	res, _ := s.query_map_first_column_to_row("SHOW GLOBAL STATUS;")
+	//    fmt.Println("Result when querying 'SHOW GLOBAL STATUS;")
+	//    fmt.Println(res)
+	v, ok := res["Threads_running"]
+	if ok && len(v) > 0 {
+		fmt.Println("Threads_running: " + string(v[0]))
+		threads_running, _ := strconv.Atoi(string(v[0]))
+		s.Metrics.ThreadsRunning.Set(float64(threads_running))
+	} else {
+		fmt.Println("cannot find Threads_running")
+	}
+	v, ok = res["Uptime_since_flush_status"]
+	if ok && len(v) > 0 {
+		fmt.Println("Uptime_since_flush_status: " + string(v[0]))
+		uptime, _ := strconv.Atoi(string(v[0]))
+		s.Metrics.UptimeSinceFlushStatus.Set(float64(uptime))
+	} else {
+		fmt.Println("cannot find Uptime_since_flush_status")
+	}
+	v, ok = res["Open_tables"]
+	if ok && len(v) > 0 {
+		fmt.Println("Open_tables: " + string(v[0]))
+		com, _ := strconv.Atoi(string(v[0]))
+		s.Metrics.OpenTables.Set(float64(com))
+	} else {
+		fmt.Println("cannot find Open_tables")
+	}
+
 	return nil
 }
