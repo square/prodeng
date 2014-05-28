@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"./mysqlstat"
+	"github.com/square/prodeng/inspect/mysqlstat"
 	"github.com/square/prodeng/metrics"
 )
 
