@@ -6,17 +6,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/square/prodeng/inspect/mysqlstat"
+	"./mysqlstat"
 	"github.com/square/prodeng/metrics"
 )
 
 func main() {
 	var stepSec int
-
+	stepSec = 2
 	m := metrics.NewMetricContext("system")
 	step := time.Millisecond * time.Duration(stepSec) * 1000
-	s, err := mysqlstat.New(m, step, nil)
+	mysqlstat.New(m, step, "")
 
-	s.get_slave_stats()
 	fmt.Println("done.")
 }
