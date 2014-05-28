@@ -116,8 +116,13 @@ time.Sleep(time.Millisecond * 1000 * 3)
 fmt.Println(cstat.Usage())
 
 ```
+###### Development
+  * Designed to run as a long-lived process with minimal memory footprint - Re-use objects where possible.
+
+
 
 ###### Todo
+  * TESTS
   * Rules for inspection need to seperated out into user supplied code/config. Currently inspect command line has hard-coded guesswork
   * PerProcessStat on darwin doesn't include optimizations done for Linux. 
   * Add intelligence to find problems. Start with easy ones like CPU usage
