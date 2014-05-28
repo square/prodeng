@@ -24,6 +24,7 @@ import _ "github.com/go-sql-driver/mysql"
 
 const (
 	DEFAULT_MYSQL_USER = "root"
+	MAX_RETRIES        = 5
 )
 
 type Configuration struct {
@@ -31,22 +32,57 @@ type Configuration struct {
 }
 
 type MysqlStat struct {
-	Metrics *MysqlStatMetrics
-	m       *metrics.MetricContext
-	db      *sql.DB
+	Metrics    *MysqlStatMetrics
+	m          *metrics.MetricContext
+	db         *sql.DB
+	dsn_string string
 }
 
 type MysqlStatMetrics struct {
-	SecondsBehindMaster    *metrics.Gauge
-	SlaveSeqFile           *metrics.Gauge
-	SlavePosition          *metrics.Gauge
-	ThreadsRunning         *metrics.Gauge
-	UptimeSinceFlushStatus *metrics.Gauge
-	OpenTables             *metrics.Gauge
+	SecondsBehindMaster       *metrics.Gauge
+	SlaveSeqFile              *metrics.Gauge
+	SlavePosition             *metrics.Gauge
+	ThreadsRunning            *metrics.Counter
+	ThreadsConnected          *metrics.Counter
+	UptimeSinceFlushStatus    *metrics.Counter
+	OpenTables                *metrics.Counter
+	Uptime                    *metrics.Counter
+	InnodbRowLockCurrentWaits *metrics.Counter
+	InnodbCurrentRowLocks     *metrics.Counter
+	InnodbRowLockTimeAvg      *metrics.Counter
+	InnodbRowLockTimeMax      *metrics.Counter
+	InnodbLogOsWaits          *metrics.Counter
+	ComSelect                 *metrics.Counter
+	Queries                   *metrics.Counter
+	BinlogSeqFile             *metrics.Counter
+	BinlogPosition            *metrics.Counter
+	IdenticalQueriesStacked   *metrics.Counter
+	IdenticalQueriesMaxAge    *metrics.Counter
+}
+
+//wrapper for make_query, where if there is an error querying the database
+// retry connecting to the db and make the query
+func (s *MysqlStat) query_db(query string) ([]string, [][]sql.RawBytes, error) {
+	var err error
+	for attempts := 0; attempts <= MAX_RETRIES; attempts++ {
+		err = s.db.Ping()
+		if err == nil {
+			if cols, data, err := s.make_query(query); err == nil {
+				return cols, data, nil
+			} else {
+				return nil, nil, err
+			}
+		}
+		s.db.Close()
+		s.db, err = sql.Open("mysql", s.dsn_string)
+	}
+	return nil, nil, err
 }
 
 //makes a query to the database
-// returns array of column names and arrays of data stored in each column
+// returns array of column names and arrays of data stored as sql.RawBytes
+// sql.RawBytes equivalent to []byte
+// data stored as 2d array with each subarray containing a single column's data
 func (s *MysqlStat) make_query(query string) ([]string, [][]sql.RawBytes, error) {
 	rows, err := s.db.Query(query)
 	if err != nil {
@@ -78,12 +114,12 @@ func (s *MysqlStat) make_query(query string) ([]string, [][]sql.RawBytes, error)
 	}
 	err = rows.Err()
 
-	return column_names, values, err
+	return column_names, values, nil
 }
 
-//return value of columns in a mapping of column_name -> column
+//return values of query in a mapping of column_name -> column
 func (s *MysqlStat) query_return_columns_dict(query string) (map[string][]sql.RawBytes, error) {
-	column_names, values, err := s.make_query(query)
+	column_names, values, err := s.query_db(query)
 	result := make(map[string][]sql.RawBytes)
 	for i, col := range column_names {
 		result[col] = values[i]
@@ -91,8 +127,9 @@ func (s *MysqlStat) query_return_columns_dict(query string) (map[string][]sql.Ra
 	return result, err
 }
 
+//return values of query in a mapping of first columns entry -> row
 func (s *MysqlStat) query_map_first_column_to_row(query string) (map[string][]sql.RawBytes, error) {
-	_, values, err := s.make_query(query)
+	_, values, err := s.query_db(query)
 	result := make(map[string][]sql.RawBytes)
 	for i, name := range values[0] {
 		for j, vals := range values {
@@ -104,6 +141,8 @@ func (s *MysqlStat) query_map_first_column_to_row(query string) (map[string][]sq
 	return result, err
 }
 
+//initializes mysqlstat
+// starts off collect
 func New(m *metrics.MetricContext, Step time.Duration, user string, password string) (*MysqlStat, error) {
 	fmt.Println("starting")
 	s := new(MysqlStat)
@@ -134,6 +173,7 @@ func New(m *metrics.MetricContext, Step time.Duration, user string, password str
 	return s, nil
 }
 
+//initializes metrics
 func MysqlStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MysqlStatMetrics {
 	//fmt.Println("starting")
 	c := new(MysqlStatMetrics)
@@ -141,6 +181,9 @@ func MysqlStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MysqlSta
 	return c
 }
 
+//makes dsn to open up connection
+//dsn is made up of the format:
+//     [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
 func make_dsn(dsn map[string]string) string {
 	var dsn_string string
 	user, ok := dsn["user"]
@@ -158,6 +201,8 @@ func make_dsn(dsn map[string]string) string {
 	return dsn_string
 }
 
+//attempts connecting to database using given information
+// if failed on first attempt, try getting password from ini file
 func (s *MysqlStat) connect(user, password string) error {
 	dsn := map[string]string{"db": "information_schema"}
 	creds := map[string]string{"root": "/root/.my.cnf", "nrpe": "/etc/my_nrpe.cnf"}
@@ -174,7 +219,8 @@ func (s *MysqlStat) connect(user, password string) error {
 	if _, err := os.Stat(socket_file); err == nil {
 		dsn["unix_socket"] = socket_file
 	}
-	db, err := sql.Open("mysql", make_dsn(dsn))
+	s.dsn_string = make_dsn(dsn)
+	db, err := sql.Open("mysql", s.dsn_string)
 	if err == nil {
 		fmt.Println("opened database without password")
 		s.db = db
@@ -190,7 +236,8 @@ func (s *MysqlStat) connect(user, password string) error {
 	configuration := Configuration{}
 	err = decoder.Decode(&configuration)
 	dsn["password"] = configuration.password[0]
-	db, err = sql.Open("mysql", make_dsn(dsn))
+	s.dsn_string = make_dsn(dsn)
+	db, err = sql.Open("mysql", s.dsn_string)
 	if err == nil {
 		s.db = db
 		return nil
@@ -240,34 +287,64 @@ func (s *MysqlStat) get_slave_stats() error {
 	return nil
 }
 
+//gets global statuses
 func (s *MysqlStat) get_global_status() error {
 	res, _ := s.query_map_first_column_to_row("SHOW GLOBAL STATUS;")
-	//    fmt.Println("Result when querying 'SHOW GLOBAL STATUS;")
-	//    fmt.Println(res)
-	v, ok := res["Threads_running"]
-	if ok && len(v) > 0 {
-		fmt.Println("Threads_running: " + string(v[0]))
-		threads_running, _ := strconv.Atoi(string(v[0]))
-		s.Metrics.ThreadsRunning.Set(float64(threads_running))
-	} else {
-		fmt.Println("cannot find Threads_running")
-	}
-	v, ok = res["Uptime_since_flush_status"]
-	if ok && len(v) > 0 {
-		fmt.Println("Uptime_since_flush_status: " + string(v[0]))
-		uptime, _ := strconv.Atoi(string(v[0]))
-		s.Metrics.UptimeSinceFlushStatus.Set(float64(uptime))
-	} else {
-		fmt.Println("cannot find Uptime_since_flush_status")
-	}
-	v, ok = res["Open_tables"]
-	if ok && len(v) > 0 {
-		fmt.Println("Open_tables: " + string(v[0]))
-		com, _ := strconv.Atoi(string(v[0]))
-		s.Metrics.OpenTables.Set(float64(com))
-	} else {
-		fmt.Println("cannot find Open_tables")
-	}
+	vars := map[string]*metrics.Counter{"Threads_running": s.Metrics.ThreadsRunning,
+		"Threads_connected":             s.Metrics.ThreadsConnected,
+		"Uptime":                        s.Metrics.Uptime,
+		"Innodb_row_lock_current_waits": s.Metrics.InnodbRowLockCurrentWaits,
+		"Innodb_current_row_locks":      s.Metrics.InnodbCurrentRowLocks,
+		"Innodb_row_lock_time_avg":      s.Metrics.InnodbRowLockTimeAvg,
+		"Innodb_row_lock_time_max":      s.Metrics.InnodbRowLockTimeMax,
+		"Queries":                       s.Metrics.Queries}
 
+	//range through expected metrics and grab from data
+	for name, metric := range vars {
+		v, ok := res[name]
+		if ok && len(v) > 0 {
+			fmt.Println(name + ": " + string(v[0]))
+			val, _ := strconv.Atoi(string(v[0]))
+			metric.Set(uint64(val))
+		} else {
+			fmt.Println("cannot find " + name)
+		}
+	}
+	return nil
+}
+
+// get binlog statistics
+func (s *MysqlStat) get_binlog_stats() error {
+	res, _ := s.query_return_columns_dict("SHOW MASTER STATUS;")
+	v, _ := strconv.Atoi(strings.Split(string(res["File"][0]), ".")[1])
+	s.Metrics.BinlogSeqFile.Set(uint64(v))
+	v, _ = strconv.Atoi(string(res["Position"][0]))
+	s.Metrics.BinlogPosition.Set(uint64(v))
+	return nil
+}
+
+//detect application bugs which result in multiple instance of the same
+// query "stacking up"/ executing at the same time
+func (s *MysqlStat) get_stacked_queries() error {
+	cmd := `
+  SELECT COUNT(*) AS identical_queries_stacked, 
+         MAX(time) AS max_age, 
+         GROUP_CONCAT(id SEPARATOR ' ') AS thread_ids, 
+         info as query 
+    FROM information_schema.processlist 
+   WHERE user != 'system user'
+     AND user NOT LIKE 'repl%'
+     AND info IS NOT NULL
+   GROUP BY 4
+  HAVING COUNT(*) > 1
+     AND MAX(time) > 300
+   ORDER BY 2 DESC;`
+	res, _ := s.query_return_columns_dict(cmd)
+	if len(res) > 0 {
+		count, _ := strconv.Atoi(string(res["identical_queries_stacked"][0]))
+		s.Metrics.IdenticalQueriesStacked.Set(uint64(count))
+		age, _ := strconv.Atoi(string(res["max_age"][0]))
+		s.Metrics.IdenticalQueriesMaxAge.Set(uint64(age))
+	}
 	return nil
 }
