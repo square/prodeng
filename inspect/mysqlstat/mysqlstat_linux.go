@@ -1,192 +1,195 @@
 // Copyright (c) 2014 Square, Inc
+//
+// Must download driver for mysql use. Run the following command:
+//      go get github.com/go-sql-driver/mysql
+// in order to successfully build/install
 
 package mysqlstat
 
 import (
-	"container/list"
+	"encoding/json"
 	"errors"
-	"fmt"
-	//for testing only. remove later
-	"math"
-
-	"github.com/square/prodeng/metrics"
-
+	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/square/prodeng/inspect/misc"
+	"github.com/square/prodeng/metrics"
 )
 
 import "database/sql"
 import _ "github.com/go-sql-driver/mysql"
 
 const (
-	DEFAULT_MYSQL_USER        = "root"
-	CRIT                      = "CRIT"
-	WARN                      = "WARN"
-	OK                        = "OK"
-	SIP_RW_HOST               = "SIP_RW_HOST"
-	SIP_RO_HOST               = "SIP_RO_HOST"
-	BACKUP                    = "MYSQL_BACKUP_HOSTS"
-	AUTO_DEBUG_RETENTION_MINS = 20
+	DEFAULT_MYSQL_USER = "root"
 )
 
-type MYSQLStat struct {
-	host          string
-	roles         map[string]map[string]bool // mapping of strings to maps (that map strings to bools)
-	db            sql.DB
-	nag_msg       map[string]*list.List
-	nag           map[string]map[string]string // mapping of strings to maps (that map strings to strings)
-	params        map[string]int
-	cluster       map[string]bool
-	state_current map[string]int
-	state_last    map[string]int
+type Configuration struct {
+	password []string
 }
 
-//returns an array of pointers to strings of specified length
-func create_address_Array(n int) []*string {
-	pointers := [n]*string{}
-	for i := 0; i < n; i++ {
-		var s string
-		pointers[i] = &s
-	}
-	return pointers
+type MysqlStat struct {
+	Metrics *MysqlStatMetrics
+	m       *metrics.MetricContext
+	db      *sql.DB
 }
 
-// returns value of columns in an array
-func (s *MYSQLStat) query_return_columns_arrays(query) ([]string, [][]string, error) {
+type MysqlStatMetrics struct {
+	SecondsBehindMaster *metrics.Gauge
+	SlaveSeqFile        *metrics.Gauge
+	SlavePosition       *metrics.Gauge
+}
+
+//makes a query to the database
+// returns array of column names and arrays of data stored in each column
+func (s *MysqlStat) make_query(query string) ([]string, [][]sql.RawBytes, error) {
 	rows, err := s.db.Query(query)
 	if err != nil {
 		return nil, nil, err
 	}
+
 	column_names, err := rows.Columns()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	columns := len(column_names) // number of columns in rows
-	result := [columns][]string{}
-	pointers := create_address_array(columns)
+	columns := len(column_names)
+	values := make([][]sql.RawBytes, columns)
+	tmp_values := make([]sql.RawBytes, columns)
+
+	scanArgs := make([]interface{}, len(values))
+	for i := range values {
+		scanArgs[i] = &tmp_values[i]
+	}
+
 	for rows.Next() {
-		//scan each column of the row into separate space
-		err = rows.Scan(pointers...)
-		//TODO: determine how to handle error
-		for i := range pointers {
-			//append each element into corresponding column array
-			result[i] = append(result[i], *pointers[i])
+		err = rows.Scan(scanArgs...)
+		if err != nil {
+			return nil, nil, err
+		}
+		for i, col := range tmp_values {
+			values[i] = append(values[i], col)
 		}
 	}
-	err = rows.Err() //get any error encountered during iteration
+	err = rows.Err()
 
-	return column_names, result, err
+	return column_names, values, err
 }
 
-//TODO: query correctly
-func (s *MYSQLStat) query_return_columns_dict(query) (map[string][]string, error) {
-	rows, err := s.db.Query(query)
-	if err != nil {
+//return value of columns in a mapping of column_name -> column
+func (s *MysqlStat) query_return_columns_dict(query string) (map[string][]sql.RawBytes, error) {
+	column_names, values, err := s.make_query(query)
+	result := make(map[string][]sql.RawBytes)
+	for i, col := range column_names {
+		result[col] = values[i]
+	}
+	return result, err
+}
+
+func New(m *metrics.MetricContext, Step time.Duration, user string) (*MysqlStat, error) {
+	s := new(MysqlStat)
+	// connect to database
+	err := s.connect(user)
+	if err != nil { //error in connecting to database
 		return nil, err
 	}
-	column_names, err := rows.Columns()
-	result := make(map[string][]string)
+	s.Metrics = MysqlStatMetricsNew(m, Step)
 
-}
-
-func (s *MYSQLStat) calc_rate(key, current_value) int {
-	key = strconv.Itoa(key)
-	stamp := key + "_stamp"
-	s.state_current[key] = current_value
-	s.state_current[stamp] = int(time.Unix())
-	_, key_ok := s.state_last[key]
-	_, stamp_ok := s.state_last[stamnp]
-	if !key_ok && !stamp_ok {
-		return -1
-	}
-	return math.Abs((s.state_current[key] - s.state_last[key]) / (s.state_current[stamp] - s.state_last[stamp]))
-}
-
-func New(m *metrics.MetricContext, Step time.Duration) *MYSQLStat {
-	s := new(MYSQLStat)
-	//TODO: connect mysql db here, or in collect
-	s.host = ""
-	s.roles = make(map[string]map[string]bool)
-	s.roles[SIP_RW_HOST] = make(map[string]bool)
-	s.roles[SIP_RO_HOST] = make(map[string]bool)
-	s.roles[BACKUP] = make(map[string]bool)
-	s.nag_msg = make(map[string]*list.List)
-	s.nag = make(map[string]map[string]string)
-	s.params = make(map[string]int)
-	s.cluster = make(map[string]bool)
-	s.state_current = make(map[string]int)
-	s.state_last = make(map[string]int)
+	s.Collect()
 
 	ticker := time.NewTicker(Step)
-	go func() {
+	//go func() {
+	func() {
 		for _ = range ticker.C {
-			m.Collect()
+			s.Collect()
 		}
 	}()
-
-	return m
+	return s, nil
 }
 
-func (s *MYSQLStat) Collect() {
-	//TODO: implement
-	fmt.Println("Collect")
+func MysqlStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MysqlStatMetrics {
+	c := new(MysqlStatMetrics)
+	misc.InitializeMetrics(c, m, "mysqlstat") //, true)
+	return c
 }
 
-// get_slave_stats modeled from function in mysql_health.py line 546
-func (s *MYSQLStat) get_slave_stats() error {
-	var msg string
-	if _, ok := s.roles[BACKUP][s.host]; ok {
-		cmd := `SELECT COUNT(*) FROM information_schema.processlist WHERE user LIKE '%backup%';`
-		column_names, res, err := query_return_columns_arrays(cmd)
-		//TODO: finish this
+func make_dsn(dsn map[string]string) string {
+	var dsn_string string
+	user, ok := dsn["user"]
+	if ok {
+		dsn_string = user + ":"
 	}
+	password, ok := dsn["password"]
+	if ok {
+		dsn_string = dsn_string + password + "@"
+	}
+	dsn_string = dsn_string + dsn["unix_socket"]
+	dsn_string = dsn_string + "/" + dsn["db"]
+	return dsn_string
+}
 
-	res, err := query_return_columns_dict("SHOW SLAVE STATUS;")
-	if len(res) == 0 {
-		s.nag_msg[CRIT].PushBack("Slave is not configured")
-		return nil
-	}
-	row = res[0]
-	r, ok := row["Seconds_Behind_Master"]
-	params["slave_seconds_behind_master"] = r
-	if !ok {
-		io_error, io_ok := row["Last_IO_Error"]
-		sql_error, sql_ok := row["Last_SQL_Error"]
-		if !io_ok && !sql_ok {
-			msg = "Slave is NOT running"
-		}
-		msg = io_error + ' ' + sql_error
-		s.nag_msg[CRIT].PushBack(msg)
-		s.params["slave_seconds_behind_master"] = -1
-		s.nag["slave_seconds_behind_master"] = map[string]string{CRIT: "<0"}
-	} else if _, ok := s.cluster["unity"]; ok { //if "unity" is in s.cluster
-		s.nag["slave_seconds_behind_cluster"] = map[string]string{CRIT: ">= 3600", WARN: ">= 300"}
-	} else if _, ok := s.roles[BACKUP][s.host]; ok { //if host is in roles[BACKUP]
-		s.nag["slave_seconds_behind_master"] = map[string]string{CRIT: ">= 3600", WARN: ">= 1800"}
+func (s *MysqlStat) connect(user string) error {
+	dsn := map[string]string{"db": "information_schema"}
+	creds := map[string]string{"root": "/root/.my.cnf", "nrpe": "/etc/my_nrpe.cnf"}
+	if user == "" {
+		user = DEFAULT_MYSQL_USER
+		dsn["user"] = DEFAULT_MYSQL_USER
 	} else {
-		s.nag["slave_seconds_behind_master"] = map[string]string{CRIT: ">= 600", WARN: ">= 300"}
+		dsn["user"] = user
 	}
-	relay_master_log_file, ok := row["Relay_Master_Log_File"]
-	if !ok {
-		return errors.New("Error, expected RelayMasterLogFile")
+	socket_file := "/var/lib/mysql/mysql.sock"
+	if _, err := os.Stat(socket_file); err == nil {
+		dsn["unix_socket"] = socket_file
 	}
-	slave_seqfile, err := strconv.Atoi(strings.Split(relay_master_log_file, ".")[1])
-	if err != nil {
-		return err
-	}
-	s.state_current["slave_seqfile"] = slave_seqfile
-	s.params["slave_seqfile"] = slave_seqfile
-	slave_position, err := strconv.Atoi(row["Exec_Master_Log_Pos"])
-	if err != nil {
-		return err
-	}
-	s.params["slave_position"] = slave_position
-	if state_last, ok := s.state_last["slave_seqfile"]; ok && state_last != s.state_currrent["slave_seqfile"] {
+	db, err := sql.Open("mysql", make_dsn(dsn))
+	if err == nil {
+		s.db = db
 		return nil
 	}
-	s.params["slave_commit_Bps"] = s.calc_rate("slave_position", slave_position)
-	return nil
+	ini_file := creds[user]
+	if _, err := os.Stat(ini_file); err != nil {
+		return errors.New("'" + ini_file + "' does not exist")
+	}
+	// read ini file to get password
+	file, _ := os.Open(ini_file)
+	decoder := json.NewDecoder(file)
+	configuration := Configuration{}
+	err = decoder.Decode(&configuration)
+	dsn["password"] = configuration.password[0]
+	db, err = sql.Open("mysql", make_dsn(dsn))
+	if err == nil {
+		s.db = db
+		return nil
+	}
+	return err
+}
 
+func (s *MysqlStat) Collect() {
+	s.get_slave_stats()
+}
+
+// get_slave_stats gets slave statistics
+func (s *MysqlStat) get_slave_stats() error {
+	res, err := s.query_return_columns_dict("SHOW SLAVE STATUS;")
+
+	seconds_behind_master, err := strconv.Atoi(string(res["Seconds_Behind_Master"][0]))
+	s.Metrics.SecondsBehindMaster.Set(float64(seconds_behind_master))
+
+	relay_master_log_file, _ := res["Relay_Master_Log_File"]
+
+	slave_seqfile, err := strconv.Atoi(strings.Split(string(relay_master_log_file[0]), ".")[1])
+	s.Metrics.SlaveSeqFile.Set(float64(slave_seqfile))
+
+	if err != nil {
+		return err
+	}
+
+	slave_position, err := strconv.Atoi(string(res["Exec_Master_Log_Pos"][0]))
+	if err != nil {
+		return err
+	}
+	s.Metrics.SlavePosition.Set(float64(slave_position))
+
+	return nil
 }
