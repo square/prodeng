@@ -30,6 +30,9 @@ type DBStats struct {
 
 type MysqlStatPerTable struct {
 	Size *metrics.Gauge
+	//    RowsRead *metrics.Counter
+	//    RowsChanged *metrics.Counter
+	//    RowsChangedXIndexes *metrics.Counter
 	//TODO: add the other metrics
 }
 
@@ -79,6 +82,7 @@ func newMysqlStatPerTable(m *metrics.MetricContext, dbname, tblname string) *Mys
 func (s *MysqlStats) Collect() {
 	s.getDBSizes()
 	s.getTableSizes()
+	//    s.getTableStatistics()
 }
 
 func (s *MysqlStats) initializeDB(dbname string) *DBStats {
@@ -163,6 +167,7 @@ func (s *MysqlStats) getTableSizes() error {
 	return nil
 }
 
+/*
 func (s *MysqlStats) getTableStatistics() {
 	cmd := `
   SELECT table_schema AS db, table_name AS tbl,
@@ -171,5 +176,16 @@ func (s *MysqlStats) getTableStatistics() {
    WHERE rows_read > 0;`
 	res, _ := s.db.QueryReturnColumnDict(cmd)
 	//TODO: implement
-
-}
+    if len(res) == 0 {
+        return
+    }
+    for i, tblname := range res["tbl"] {
+        dbname := res["db"][i]
+        rows_read, _ := strconv.Atoi(res["rows_read"][i])
+        rows_changed, _ := strconv.Atoi(res["rows_changed"][i])
+        rows_changed_x_indexes, _ := strconv.Atoi(res["rows_changed_x_indexes"][i])
+        s.DBs[dbname].Tables[tblname].RowsRead.Set(uint64(rows_read))
+        s.DBs[dbname].Tables[tblname].RowsChanged.Set(uint64(rows_changed))
+        s.DBs[dbname].Tables[tblname].RowsChangedXIndexes.Set(uint64(rows_changed_x_indexes))
+    }
+} */

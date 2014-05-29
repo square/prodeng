@@ -43,6 +43,9 @@ type MysqlStatMetrics struct {
 	BinlogPosition            *metrics.Gauge
 	IdenticalQueriesStacked   *metrics.Gauge
 	IdenticalQueriesMaxAge    *metrics.Gauge
+	MaxConnections            *metrics.Gauge
+	CurrentConnections        *metrics.Gauge
+	CurrentConnectionsPercent *metrics.Gauge
 }
 
 //initializes mysqlstat
@@ -79,12 +82,15 @@ func MysqlStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MysqlSta
 }
 
 func (s *MysqlStat) Collect() {
-	s.get_slave_stats()
-	s.get_global_status()
+	s.getSlaveStats()
+	s.getGlobalStatus()
+	s.getBinlogStats()
+	s.getStackedQueries()
+	s.getSessions()
 }
 
 // get_slave_stats gets slave statistics
-func (s *MysqlStat) get_slave_stats() error {
+func (s *MysqlStat) getSlaveStats() error {
 	res, _ := s.db.QueryReturnColumnDict("SHOW SLAVE STATUS;")
 	//	fmt.Println("Result when querying 'SHOW SLAVE STATUS;'")
 	//	fmt.Println(res)
@@ -115,7 +121,7 @@ func (s *MysqlStat) get_slave_stats() error {
 }
 
 //gets global statuses
-func (s *MysqlStat) get_global_status() error {
+func (s *MysqlStat) getGlobalStatus() error {
 	res, _ := s.db.QueryMapFirstColumnToRow("SHOW GLOBAL STATUS;")
 	vars := map[string]interface{}{"Threads_running": s.Metrics.ThreadsRunning,
 		"Threads_connected":             s.Metrics.ThreadsConnected,
@@ -143,8 +149,12 @@ func (s *MysqlStat) get_global_status() error {
 }
 
 // get binlog statistics
-func (s *MysqlStat) get_binlog_stats() error {
+func (s *MysqlStat) getBinlogStats() error {
 	res, _ := s.db.QueryReturnColumnDict("SHOW MASTER STATUS;")
+	if len(res["File"]) == 0 || len(res["Position"]) == 0 {
+		return nil
+	}
+
 	v, _ := strconv.Atoi(strings.Split(string(res["File"][0]), ".")[1])
 	s.Metrics.BinlogSeqFile.Set(float64(v))
 	v, _ = strconv.Atoi(string(res["Position"][0]))
@@ -154,7 +164,7 @@ func (s *MysqlStat) get_binlog_stats() error {
 
 //detect application bugs which result in multiple instance of the same
 // query "stacking up"/ executing at the same time
-func (s *MysqlStat) get_stacked_queries() error {
+func (s *MysqlStat) getStackedQueries() error {
 	cmd := `
   SELECT COUNT(*) AS identical_queries_stacked, 
          MAX(time) AS max_age, 
@@ -169,12 +179,36 @@ func (s *MysqlStat) get_stacked_queries() error {
      AND MAX(time) > 300
    ORDER BY 2 DESC;`
 	res, _ := s.db.QueryReturnColumnDict(cmd)
-	if len(res) > 0 {
+	if len(res) > 0 && len(res["identical_queries_stacked"]) > 0 {
 		count, _ := strconv.Atoi(string(res["identical_queries_stacked"][0]))
 		s.Metrics.IdenticalQueriesStacked.Set(float64(count))
 		age, _ := strconv.Atoi(string(res["max_age"][0]))
 		s.Metrics.IdenticalQueriesMaxAge.Set(float64(age))
 	}
+	return nil
+}
+
+func (s *MysqlStat) getSessions() error {
+	res, _ := s.db.QueryReturnColumnDict("SELECT @@GLOBAL.max_connections;")
+	var max_sessions int
+	for _, val := range res {
+		max_sessions, _ = strconv.Atoi(val[0])
+		s.Metrics.MaxConnections.Set(float64(max_sessions))
+	}
+	cmd := `
+    SELECT IF(command LIKE 'Sleep',1,0) +
+           IF(state LIKE '%master%' OR state LIKE '%slave%',1,0) AS sort_col,
+           processlist.*
+      FROM information_schema.processlist
+     ORDER BY 1, time DESC;`
+	res, _ = s.db.QueryReturnColumnDict(cmd)
+	if len(res) == 0 || len(res["COMMAND"]) == 0 {
+		return nil
+	}
+	current_total := len(res["COMMAND"])
+	s.Metrics.CurrentConnections.Set(float64(current_total))
+	pct := (float64(current_total) / float64(max_sessions)) * 100
+	s.Metrics.CurrentConnectionsPercent.Set(pct)
 	return nil
 }
 
