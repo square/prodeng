@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/square/prodeng/inspect/mysqlstat"
+	"github.com/square/prodeng/inspect-mysql/mysqlstat"
 	"github.com/square/prodeng/metrics"
 )
 
