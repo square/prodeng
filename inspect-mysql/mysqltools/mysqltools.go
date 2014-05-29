@@ -149,7 +149,7 @@ func New(user, password string) (*MysqlDB, error) {
 	dsn := map[string]string{"db": "information_schema"}
 	//TESTING PASSWORD GRABBING
 	//	creds := map[string]string{"root": "/root/.my.cnf", "nrpe": "/etc/my_nrpe.cnf"}
-	creds := map[string]string{"brianip": "/Users/brianip/Documents/test/.my.cnf", "root": "/Users/brianip/Documents/test/.my.cnf", "nrpe": "/etc/my_nrpe.cnf"}
+	creds := map[string]string{"brianip": "/Users/brianip/Documents/test/.my.cnf", "root": "/root/.my.cnf", "nrpe": "/etc/my_nrpe.cnf"}
 
 	if user == "" {
 		user = DEFAULT_MYSQL_USER
