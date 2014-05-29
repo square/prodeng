@@ -7,10 +7,12 @@
 package mysqltools
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
+	"strings"
+
+	"code.google.com/p/goconf/conf" // used for parsing config files
 )
 
 import "database/sql"
@@ -28,6 +30,12 @@ const (
 
 type Configuration struct {
 	password []string
+}
+
+type Config struct {
+	Client struct {
+		Password string
+	}
 }
 
 //wrapper for make_query, where if there is an error querying the database
@@ -101,6 +109,9 @@ func (database *MysqlDB) QueryReturnColumnDict(query string) (map[string][]strin
 func (database *MysqlDB) QueryMapFirstColumnToRow(query string) (map[string][]string, error) {
 	_, values, err := database.queryDb(query)
 	result := make(map[string][]string)
+	if len(values) == 0 {
+		return nil, nil
+	}
 	for i, name := range values[0] {
 		for j, vals := range values {
 			if j != 0 {
@@ -136,7 +147,10 @@ func New(user, password string) (*MysqlDB, error) {
 	database := new(MysqlDB)
 	// build dsn info here
 	dsn := map[string]string{"db": "information_schema"}
-	creds := map[string]string{"root": "/root/.my.cnf", "nrpe": "/etc/my_nrpe.cnf"}
+	//TESTING PASSWORD GRABBING
+	//	creds := map[string]string{"root": "/root/.my.cnf", "nrpe": "/etc/my_nrpe.cnf"}
+	creds := map[string]string{"brianip": "/Users/brianip/Documents/test/.my.cnf", "root": "/Users/brianip/Documents/test/.my.cnf", "nrpe": "/etc/my_nrpe.cnf"}
+
 	if user == "" {
 		user = DEFAULT_MYSQL_USER
 		dsn["user"] = DEFAULT_MYSQL_USER
@@ -150,29 +164,24 @@ func New(user, password string) (*MysqlDB, error) {
 	if _, err := os.Stat(socket_file); err == nil {
 		dsn["unix_socket"] = socket_file
 	}
-	database.dsnString = makeDsn(dsn)
 
-	//first attempt to connect here
-	db, err := sql.Open("mysql", database.dsnString)
-	if err == nil {
-		fmt.Println("opened database without password")
-		database.db = db
-		return database, nil
-	}
+	//Parse ini file to get password
 	ini_file := creds[user]
-	if _, err := os.Stat(ini_file); err != nil {
+	_, err := os.Stat(ini_file)
+	if err != nil {
+		fmt.Println(err)
 		return nil, errors.New("'" + ini_file + "' does not exist")
 	}
 	// read ini file to get password
-	file, _ := os.Open(ini_file)
-	decoder := json.NewDecoder(file)
-	configuration := Configuration{}
-	err = decoder.Decode(&configuration)
-	dsn["password"] = configuration.password[0]
+	c, err := conf.ReadConfigFile(ini_file)
+	if err != nil {
+		fmt.Println(err)
+	}
+	pw, err := c.GetString("client", "password")
+	dsn["password"] = strings.Trim(pw, "\"")
 	database.dsnString = makeDsn(dsn)
 
-	//second attempt to connect here
-	db, err = sql.Open("mysql", database.dsnString)
+	db, err := sql.Open("mysql", database.dsnString)
 	if err != nil {
 		return nil, err
 	}
