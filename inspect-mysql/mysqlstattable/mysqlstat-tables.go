@@ -30,6 +30,8 @@ type DBStats struct {
 
 type MysqlStatPerTable struct {
 	Size *metrics.Gauge
+	// These add a lot of metrics, so commented out for easier testing
+	//   potentially consolidate into a per database metric for sake of volume
 	//    RowsRead *metrics.Counter
 	//    RowsChanged *metrics.Counter
 	//    RowsChangedXIndexes *metrics.Counter
@@ -66,12 +68,14 @@ func New(m *metrics.MetricContext, Step time.Duration, user string, password str
 	return s, nil
 }
 
+//initialize  per database metrics
 func newMysqlStatPerDB(m *metrics.MetricContext, dbname string) *MysqlStatPerDB {
 	o := new(MysqlStatPerDB)
 	misc.InitializeMetrics(o, m, "sqldbstat."+dbname, true)
 	return o
 }
 
+//initialize per table metrics
 func newMysqlStatPerTable(m *metrics.MetricContext, dbname, tblname string) *MysqlStatPerTable {
 	o := new(MysqlStatPerTable)
 
@@ -85,6 +89,7 @@ func (s *MysqlStats) Collect() {
 	//    s.getTableStatistics()
 }
 
+//instantiate database metrics struct
 func (s *MysqlStats) initializeDB(dbname string) *DBStats {
 	n := new(DBStats)
 	n.Metrics = newMysqlStatPerDB(s.m, dbname)
@@ -92,6 +97,7 @@ func (s *MysqlStats) initializeDB(dbname string) *DBStats {
 	return n
 }
 
+//check if database struct is instantiated, and instantiate if not
 func (s *MysqlStats) checkDB(dbname string) error {
 	if _, ok := s.DBs[dbname]; !ok {
 		s.DBs[dbname] = s.initializeDB(dbname)
@@ -99,6 +105,7 @@ func (s *MysqlStats) checkDB(dbname string) error {
 	return nil
 }
 
+//check if table struct is instantiated, and instantiate if not
 func (s *MysqlStats) checkTable(dbname, tblname string) error {
 	s.checkDB(dbname)
 	if _, ok := s.DBs[dbname].Tables[tblname]; !ok {
