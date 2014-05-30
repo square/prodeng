@@ -7,6 +7,7 @@
 package mysqlstat
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -46,6 +47,13 @@ type MysqlStatMetrics struct {
 	MaxConnections            *metrics.Gauge
 	CurrentConnections        *metrics.Gauge
 	CurrentConnectionsPercent *metrics.Gauge
+	ActiveSessions            *metrics.Gauge
+	UnauthenticatedSessions   *metrics.Gauge
+	LockedSessions            *metrics.Gauge
+	TablesLocks               *metrics.Gauge
+	GlobalReadLocks           *metrics.Gauge
+	CopyingToTable            *metrics.Gauge
+	Statistics                *metrics.Gauge
 }
 
 //initializes mysqlstat
@@ -209,6 +217,42 @@ func (s *MysqlStat) getSessions() error {
 	s.Metrics.CurrentConnections.Set(float64(current_total))
 	pct := (float64(current_total) / float64(max_sessions)) * 100
 	s.Metrics.CurrentConnectionsPercent.Set(pct)
+
+	//more stuff? idk what any of this means
+	active := 0.0
+	unauthenticated := 0
+	locked := 0
+	table_lock_wait := 0
+	global_read_lock_wait := 0
+	copy_to_table := 0
+	statistics := 0
+	for i, val := range res["COMMAND"] {
+		if val != "Sleep" && val != "Connect" && val != "Binlog Dump" {
+			active += 1
+		}
+		if matched, err := regexp.MatchString("unauthenticated", res["USER"][i]); err == nil && matched {
+			unauthenticated += 1
+		}
+		if matched, err := regexp.MatchString("Locked", res["STATE"][i]); err == nil && matched {
+			locked += 1
+		} else if matched, err := regexp.MatchString("Table Lock", res["STATE"][i]); err == nil && matched {
+			table_lock_wait += 1
+		} else if matched, err := regexp.MatchString("Waiting for global read lock", res["STATE"][i]); err == nil && matched {
+			global_read_lock_wait += 1
+		} else if matched, err := regexp.MatchString("opy.*table", res["STATE"][i]); err == nil && matched {
+			copy_to_table += 1
+		} else if matched, err := regexp.MatchString("statistics", res["STATE"][i]); err == nil && matched {
+			statistics += 1
+		}
+	}
+	s.Metrics.ActiveSessions.Set(active)
+	s.Metrics.UnauthenticatedSessions.Set(float64(unauthenticated))
+	s.Metrics.LockedSessions.Set(float64(locked))
+	s.Metrics.TablesLocks.Set(float64(table_lock_wait))
+	s.Metrics.GlobalReadLocks.Set(float64(global_read_lock_wait))
+	s.Metrics.CopyingToTable.Set(float64(copy_to_table))
+	s.Metrics.Statistics.Set(float64(statistics))
+
 	return nil
 }
 
