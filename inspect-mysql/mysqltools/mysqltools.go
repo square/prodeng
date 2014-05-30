@@ -48,6 +48,8 @@ func (database *MysqlDB) queryDb(query string) ([]string, [][]string, error) {
 			if cols, data, err := database.makeQuery(query); err == nil {
 				return cols, data, nil
 			} else {
+				fmt.Println("query error: ")
+				fmt.Println(err)
 				return nil, nil, err
 			}
 		}
@@ -74,7 +76,7 @@ func (database *MysqlDB) makeQuery(query string) ([]string, [][]string, error) {
 
 	columns := len(column_names)
 	values := make([][]string, columns)
-	tmp_values := make([]string, columns)
+	tmp_values := make([]sql.RawBytes, columns)
 
 	scanArgs := make([]interface{}, len(values))
 	for i := range values {
@@ -87,7 +89,8 @@ func (database *MysqlDB) makeQuery(query string) ([]string, [][]string, error) {
 			return nil, nil, err
 		}
 		for i, col := range tmp_values {
-			values[i] = append(values[i], col)
+			str := string(col)
+			values[i] = append(values[i], str)
 		}
 	}
 	err = rows.Err()

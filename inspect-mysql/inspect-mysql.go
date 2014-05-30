@@ -52,10 +52,9 @@ func main() {
 		fmt.Println("--------------------------")
 		fmt.Println("Queries made: " + strconv.Itoa(int(sqlstat.Queries())))
 		fmt.Println("Uptime: " + strconv.Itoa(int(sqlstat.Uptime())))
-		fmt.Println()
 		fmt.Println("Database sizes: ")
 		for dbname, db := range sqlstatTables.DBs {
-			fmt.Println(dbname + ": " + strconv.Itoa(int(db.Metrics.Size.Get())))
+			fmt.Println("    " + dbname + ": " + strconv.Itoa(int(db.Metrics.Size.Get())))
 		}
 	}
 
