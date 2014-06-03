@@ -59,7 +59,7 @@ func main() {
 		fmt.Println("Uptime: " + strconv.Itoa(int(sqlstat.Uptime())))
 		fmt.Println("Database sizes: ")
 		for dbname, db := range sqlstatTables.DBs {
-			size := db.Metrics.Size.Get()
+			size := db.Metrics.SizeBytes.Get()
 			if human {
 				size /= (1024 * 1024)
 			}

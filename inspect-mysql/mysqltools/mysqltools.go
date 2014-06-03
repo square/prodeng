@@ -58,8 +58,6 @@ func (database *MysqlDB) queryDb(query string) ([]string, [][]string, error) {
 			if cols, data, err := database.makeQuery(query); err == nil {
 				return cols, data, nil
 			} else {
-				fmt.Println("query error: ")
-				fmt.Println(err)
 				return nil, nil, err
 			}
 		}
@@ -155,7 +153,6 @@ func makeDsn(dsn map[string]string) string {
 }
 
 func New(user, password, config string) (*MysqlDB, error) {
-	fmt.Println("connecting to database")
 	database := new(MysqlDB)
 	// build dsn info here
 	dsn := map[string]string{"db": "information_schema"}
@@ -176,7 +173,6 @@ func New(user, password, config string) (*MysqlDB, error) {
 	//	}
 
 	//Parse ini file to get password
-
 	ini_file := creds[user]
 	if config != "" {
 		ini_file = config
@@ -192,7 +188,7 @@ func New(user, password, config string) (*MysqlDB, error) {
 		return nil, err
 	}
 	pw, err := c.GetString("client", "password")
-	dsn["password"] = strings.Trim(pw, "\"")
+	dsn["password"] = strings.Trim(pw, " \"")
 	database.dsnString = makeDsn(dsn)
 
 	db, err := sql.Open("mysql", database.dsnString)
@@ -205,6 +201,7 @@ func New(user, password, config string) (*MysqlDB, error) {
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("connected to " + user + " @ " + dsn["db"])
 	return database, nil
 }
 
@@ -215,9 +212,6 @@ func (database *MysqlDB) Close() {
 func ParseInnodbStats(blob string) (*InnodbStats, error) {
 	idb := new(InnodbStats)
 	idb.Metrics = make(map[string]string)
-	//	idb.Mets = make(map[string]string)
-	//	idb.Mets = make(map[string]string)
-	//	idb.Mets = make(map[string]string)
 
 	chunks := regexp.MustCompile("\n[-=]{3,80}\n").Split(blob, -1)
 	for i, chunk := range chunks {
@@ -226,16 +220,12 @@ func ParseInnodbStats(blob string) (*InnodbStats, error) {
 			chunk = strings.Trim(chunk, " \n")
 			if m, _ := regexp.MatchString("FILE I/O", chunk); m {
 				idb.parseFileIO(chunks[i+1])
-				//	fmt.Println(idb.Metrics)
 			} else if chunk == "LOG" {
 				idb.parseLog(chunks[i+1])
-				//	fmt.Println(idb.Metrics)
 			} else if chunk == "BUFFER POOL AND MEMORY" {
 				idb.parseBufferPoolAndMem(chunks[i+1])
-				//	fmt.Println(idb.Metrics)
 			} else if chunk == "TRANSACTIONS" {
 				idb.parseTransactions(chunks[i+1])
-				//	fmt.Println(idb.Metrics)
 			}
 		}
 	}
