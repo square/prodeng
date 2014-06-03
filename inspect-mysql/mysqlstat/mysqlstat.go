@@ -24,107 +24,107 @@ type MysqlStat struct {
 
 //metrics being collected about the server/database
 type MysqlStatMetrics struct {
-	SlaveSecondsBehindMaster      *metrics.Gauge
-	SlaveSeqFile                  *metrics.Gauge
-	SlavePosition                 *metrics.Counter
-	ThreadsRunning                *metrics.Gauge
-	ThreadsConnected              *metrics.Gauge
-	UptimeSinceFlushStatus        *metrics.Counter
-	OpenTables                    *metrics.Gauge
-	Uptime                        *metrics.Counter
-	InnodbRowLockCurrentWaits     *metrics.Gauge
-	InnodbCurrentRowLocks         *metrics.Gauge
-	InnodbRowLockTimeAvg          *metrics.Gauge
-	InnodbRowLockTimeMax          *metrics.Counter
-	InnodbLogOsWaits              *metrics.Gauge
-	ComSelect                     *metrics.Counter
-	Queries                       *metrics.Counter
-	BinlogSeqFile                 *metrics.Gauge
-	BinlogPosition                *metrics.Counter
-	IdenticalQueriesStacked       *metrics.Gauge
-	IdenticalQueriesMaxAge        *metrics.Gauge
-	MaxConnections                *metrics.Gauge
-	CurrentSessions               *metrics.Gauge
-	CurrentConnectionsPct         *metrics.Gauge
+	ASFsynce                      *metrics.Gauge
+	ActiveLongRunQueries          *metrics.Gauge
 	ActiveSessions                *metrics.Gauge
-	UnauthenticatedSessions       *metrics.Gauge
-	LockedSessions                *metrics.Gauge
-	TablesLocks                   *metrics.Gauge
-	GlobalReadLocks               *metrics.Gauge
-	CopyingToTable                *metrics.Gauge
-	Statistics                    *metrics.Gauge
-	ComCreateTable                *metrics.Counter
+	AdaptiveHash                  *metrics.Gauge
+	AvgBytesPerRead               *metrics.Gauge
+	BinlogCacheDiskUse            *metrics.Counter
+	BinlogCacheUse                *metrics.Counter
+	BinlogFiles                   *metrics.Gauge
+	BinlogPosition                *metrics.Counter
+	BinlogSeqFile                 *metrics.Gauge
+	BinlogSize                    *metrics.Gauge
+	BufferPoolHitRate             *metrics.Gauge
+	BufferPoolSize                *metrics.Gauge
+	BusySessionPct                *metrics.Gauge
+	CacheHitPct                   *metrics.Gauge
 	ComAlterTable                 *metrics.Counter
-	ComDropTable                  *metrics.Counter
 	ComBegin                      *metrics.Counter
 	ComCommit                     *metrics.Counter
-	ComRollback                   *metrics.Counter
-	ComInsert                     *metrics.Counter
-	ComInsertSelect               *metrics.Counter
-	ComUpdate                     *metrics.Counter
-	ComUpdateMulti                *metrics.Counter
+	ComCreateTable                *metrics.Counter
 	ComDelete                     *metrics.Counter
 	ComDeleteMulti                *metrics.Counter
+	ComDropTable                  *metrics.Counter
+	ComInsert                     *metrics.Counter
+	ComInsertSelect               *metrics.Counter
 	ComReplace                    *metrics.Counter
 	ComReplaceSelect              *metrics.Counter
-	BinlogCacheUse                *metrics.Counter
-	BinlogCacheDiskUse            *metrics.Counter
-	SortMergePasses               *metrics.Counter
+	ComRollback                   *metrics.Counter
+	ComSelect                     *metrics.Counter
+	ComUpdate                     *metrics.Counter
+	ComUpdateMulti                *metrics.Counter
+	CopyingToTable                *metrics.Gauge
 	CreatedTmpDiskTables          *metrics.Counter
 	CreatedTmpFiles               *metrics.Counter
 	CreatedTmpTables              *metrics.Counter
-	TransactionID                 *metrics.Gauge
-	InnodbTransactionsNotStarted  *metrics.Gauge
-	InnodbHistoryLinkList         *metrics.Gauge
-	InnodbUndo                    *metrics.Counter
-	OSFileReads                   *metrics.Gauge
-	OSFileWrites                  *metrics.Gauge
-	ASFsynce                      *metrics.Gauge
-	ReadsPerSec                   *metrics.Gauge
-	AvgBytesPerRead               *metrics.Gauge
-	WritesPerSec                  *metrics.Gauge
-	FsyncsPerSec                  *metrics.Gauge
-	InnodbLogSequenceNumber       *metrics.Counter
-	InnodbLastCheckpointAt        *metrics.Gauge
-	InnodbMaxCheckpointAge        *metrics.Gauge
-	InnodbModifiedAge             *metrics.Gauge
-	InnodbCheckpointAge           *metrics.Gauge
-	InnodbPendingLogWrites        *metrics.Gauge
-	InnodbLogFlushedUpTo          *metrics.Gauge
-	PagesFlushedUpTo              *metrics.Gauge
-	InnodbCheckpointAgeTarget     *metrics.Gauge
-	InnodbPendingCheckpointWrites *metrics.Gauge
-	TotalMemByReadViews           *metrics.Gauge
-	PageHash                      *metrics.Gauge
-	FileSystem                    *metrics.Gauge
-	LockSystem                    *metrics.Gauge
-	RecoverySystem                *metrics.Gauge
+	CurrentConnectionsPct         *metrics.Gauge
+	CurrentSessions               *metrics.Gauge
 	DatabasePages                 *metrics.Gauge
-	PendingReads                  *metrics.Gauge
-	BufferPoolSize                *metrics.Gauge
-	TotalMem                      *metrics.Gauge
-	AdaptiveHash                  *metrics.Gauge
 	DictionaryCache               *metrics.Gauge
-	OldDatabasePages              *metrics.Gauge
-	PagesRead                     *metrics.Gauge
 	DictionaryMemoryAllocated     *metrics.Gauge
+	FileSystem                    *metrics.Gauge
 	FreeBuffers                   *metrics.Gauge
-	ModifiedDBPages               *metrics.Gauge
-	LRU                           *metrics.Gauge
-	PagesMadeYoung                *metrics.Gauge
-	BufferPoolHitRate             *metrics.Gauge
-	Version                       *metrics.Gauge
-	ActiveLongRunQueries          *metrics.Gauge
-	BinlogFiles                   *metrics.Gauge
-	BinlogSize                    *metrics.Gauge
-	CacheHitPct                   *metrics.Gauge
-	InnodbLogWriteRatio           *metrics.Gauge
-	LogIOPerSec                   *metrics.Gauge
-	BusySessionPct                *metrics.Gauge
+	FsyncsPerSec                  *metrics.Gauge
+	GlobalReadLocks               *metrics.Gauge
+	IdenticalQueriesMaxAge        *metrics.Gauge
+	IdenticalQueriesStacked       *metrics.Gauge
 	InnodbBufpoolLRUMutexOSWait   *metrics.Counter
 	InnodbBufpoolZipMutexOSWait   *metrics.Counter
+	InnodbCheckpointAge           *metrics.Gauge
+	InnodbCheckpointAgeTarget     *metrics.Gauge
+	InnodbCurrentRowLocks         *metrics.Gauge
+	InnodbHistoryLinkList         *metrics.Gauge
+	InnodbLastCheckpointAt        *metrics.Gauge
+	InnodbLogFlushedUpTo          *metrics.Gauge
+	InnodbLogOsWaits              *metrics.Gauge
+	InnodbLogSequenceNumber       *metrics.Counter
+	InnodbLogWriteRatio           *metrics.Gauge
+	InnodbMaxCheckpointAge        *metrics.Gauge
+	InnodbModifiedAge             *metrics.Gauge
+	InnodbPendingCheckpointWrites *metrics.Gauge
+	InnodbPendingLogWrites        *metrics.Gauge
+	InnodbRowLockCurrentWaits     *metrics.Gauge
+	InnodbRowLockTimeAvg          *metrics.Gauge
+	InnodbRowLockTimeMax          *metrics.Counter
+	InnodbTransactionsNotStarted  *metrics.Gauge
+	InnodbUndo                    *metrics.Counter
+	LRU                           *metrics.Gauge
+	LockSystem                    *metrics.Gauge
+	LockedSessions                *metrics.Gauge
+	LogIOPerSec                   *metrics.Gauge
+	MaxConnections                *metrics.Gauge
+	ModifiedDBPages               *metrics.Gauge
+	OSFileReads                   *metrics.Gauge
+	OSFileWrites                  *metrics.Gauge
+	OldDatabasePages              *metrics.Gauge
 	OldestQuery                   *metrics.Gauge
-	//Query response time metrics
+	OpenTables                    *metrics.Gauge
+	PageHash                      *metrics.Gauge
+	PagesFlushedUpTo              *metrics.Gauge
+	PagesMadeYoung                *metrics.Gauge
+	PagesRead                     *metrics.Gauge
+	PendingReads                  *metrics.Gauge
+	Queries                       *metrics.Counter
+	ReadsPerSec                   *metrics.Gauge
+	RecoverySystem                *metrics.Gauge
+	SlavePosition                 *metrics.Counter
+	SlaveSecondsBehindMaster      *metrics.Gauge
+	SlaveSeqFile                  *metrics.Gauge
+	SortMergePasses               *metrics.Counter
+	Statistics                    *metrics.Gauge
+	TablesLocks                   *metrics.Gauge
+	ThreadsConnected              *metrics.Gauge
+	ThreadsRunning                *metrics.Gauge
+	TotalMem                      *metrics.Gauge
+	TotalMemByReadViews           *metrics.Gauge
+	TransactionID                 *metrics.Gauge
+	UnauthenticatedSessions       *metrics.Gauge
+	Uptime                        *metrics.Counter
+	UptimeSinceFlushStatus        *metrics.Counter
+	Version                       *metrics.Gauge
+	WritesPerSec                  *metrics.Gauge
+	//TODO: Query response time metrics
 }
 
 //initializes mysqlstat
@@ -204,36 +204,38 @@ func (s *MysqlStat) getSlaveStats() error {
 //gets global statuses
 func (s *MysqlStat) getGlobalStatus() error {
 	res, _ := s.db.QueryMapFirstColumnToRow("SHOW GLOBAL STATUS;")
-	vars := map[string]interface{}{"Threads_running": s.Metrics.ThreadsRunning,
-		"Threads_connected":             s.Metrics.ThreadsConnected,
-		"Uptime":                        s.Metrics.Uptime,
-		"Innodb_row_lock_current_waits": s.Metrics.InnodbRowLockCurrentWaits,
+	vars := map[string]interface{}{
+		"Binlog_cache_disk_use":         s.Metrics.BinlogCacheDiskUse,
+		"Binlog_cache_use":              s.Metrics.BinlogCacheUse,
+		"Com_alter_table":               s.Metrics.ComAlterTable,
+		"Com_begin":                     s.Metrics.ComBegin,
+		"Com_commit":                    s.Metrics.ComCommit,
+		"Com_create_table":              s.Metrics.ComCreateTable,
+		"Com_delete":                    s.Metrics.ComDelete,
+		"Com_delete_multi":              s.Metrics.ComDeleteMulti,
+		"Com_drop_table":                s.Metrics.ComDropTable,
+		"Com_insert":                    s.Metrics.ComInsert,
+		"Com_insert_select":             s.Metrics.ComInsertSelect,
+		"Com_replace":                   s.Metrics.ComReplace,
+		"Com_replace_select":            s.Metrics.ComReplaceSelect,
+		"Com_rollback":                  s.Metrics.ComRollback,
+		"Com_select":                    s.Metrics.ComSelect,
+		"Com_update":                    s.Metrics.ComUpdate,
+		"Com_update_multi":              s.Metrics.ComUpdateMulti,
+		"Created_tmp_disk_tables":       s.Metrics.CreatedTmpDiskTables,
+		"Created_tmp_files":             s.Metrics.CreatedTmpFiles,
+		"Created_tmp_tables":            s.Metrics.CreatedTmpTables,
 		"Innodb_current_row_locks":      s.Metrics.InnodbCurrentRowLocks,
+		"Innodb_log_os_waits":           s.Metrics.InnodbLogOsWaits,
+		"Innodb_row_lock_current_waits": s.Metrics.InnodbRowLockCurrentWaits,
 		"Innodb_row_lock_time_avg":      s.Metrics.InnodbRowLockTimeAvg,
 		"Innodb_row_lock_time_max":      s.Metrics.InnodbRowLockTimeMax,
 		"Queries":                       s.Metrics.Queries,
-		"Innodb_log_os_waits":           s.Metrics.InnodbLogOsWaits,
-		"Com_select":                    s.Metrics.ComSelect,
-		"Com_create_table":              s.Metrics.ComCreateTable,
-		"Com_alter_table":               s.Metrics.ComAlterTable,
-		"Com_drop_table":                s.Metrics.ComDropTable,
-		"Com_begin":                     s.Metrics.ComBegin,
-		"Com_commit":                    s.Metrics.ComCommit,
-		"Com_rollback":                  s.Metrics.ComRollback,
-		"Com_insert":                    s.Metrics.ComInsert,
-		"Com_insert_select":             s.Metrics.ComInsertSelect,
-		"Com_update":                    s.Metrics.ComUpdate,
-		"Com_update_multi":              s.Metrics.ComUpdateMulti,
-		"Com_delete":                    s.Metrics.ComDelete,
-		"Com_delete_multi":              s.Metrics.ComDeleteMulti,
-		"Com_replace":                   s.Metrics.ComReplace,
-		"Com_replace_select":            s.Metrics.ComReplaceSelect,
-		"Binlog_cache_use":              s.Metrics.BinlogCacheUse,
-		"Binlog_cache_disk_use":         s.Metrics.BinlogCacheDiskUse,
 		"Sort_merge_passes":             s.Metrics.SortMergePasses,
-		"Created_tmp_disk_tables":       s.Metrics.CreatedTmpDiskTables,
-		"Created_tmp_files":             s.Metrics.CreatedTmpFiles,
-		"Created_tmp_tables":            s.Metrics.CreatedTmpTables}
+		"Threads_connected":             s.Metrics.ThreadsConnected,
+		"Uptime":                        s.Metrics.Uptime,
+		"Threads_running":               s.Metrics.ThreadsRunning,
+	}
 
 	//range through expected metrics and grab from data
 	for name, metric := range vars {
@@ -480,47 +482,47 @@ func (s *MysqlStat) getInnodbStats() {
 		idb, _ = mysqltools.ParseInnodbStats(val[0])
 	}
 	vars := map[string]interface{}{
-		"trx_id":                      s.Metrics.TransactionID,
-		"trxes_not_started":           s.Metrics.InnodbTransactionsNotStarted,
-		"history_list":                s.Metrics.InnodbHistoryLinkList,
-		"undo":                        s.Metrics.InnodbUndo,
 		"OS_file_reads":               s.Metrics.OSFileReads,
 		"OS_file_writes":              s.Metrics.OSFileWrites,
-		"reads_per_s":                 s.Metrics.ReadsPerSec,
+		"adaptive_hash":               s.Metrics.AdaptiveHash,
 		"avg_bytes_per_read":          s.Metrics.AvgBytesPerRead,
-		"writes_per_s":                s.Metrics.WritesPerSec,
+		"buffer_pool_hit_rate":        s.Metrics.BufferPoolHitRate,
+		"buffer_pool_size":            s.Metrics.BufferPoolSize,
+		"cache_hit_pct":               s.Metrics.CacheHitPct,
+		"checkpoint_age":              s.Metrics.InnodbCheckpointAge,
+		"checkpoint_age_target":       s.Metrics.InnodbCheckpointAgeTarget,
+		"database_pages":              s.Metrics.DatabasePages,
+		"dictionary_cache":            s.Metrics.DictionaryCache,
+		"dictionary_memory_allocated": s.Metrics.DictionaryMemoryAllocated,
+		"file_system":                 s.Metrics.FileSystem,
+		"free_buffers":                s.Metrics.FreeBuffers,
 		"fsyncs_per_s":                s.Metrics.FsyncsPerSec,
-		"log_sequence_number":         s.Metrics.InnodbLogSequenceNumber,
+		"history_list":                s.Metrics.InnodbHistoryLinkList,
 		"last_checkpoint_at":          s.Metrics.InnodbLastCheckpointAt,
+		"lock_system":                 s.Metrics.LockSystem,
+		"log_flushed_up_to":           s.Metrics.InnodbLogFlushedUpTo,
+		"log_io_per_sec":              s.Metrics.LogIOPerSec,
+		"log_sequence_number":         s.Metrics.InnodbLogSequenceNumber,
 		"max_checkpoint_age":          s.Metrics.InnodbMaxCheckpointAge,
 		"modified_age":                s.Metrics.InnodbModifiedAge,
-		"checkpoint_age":              s.Metrics.InnodbCheckpointAge,
-		"pending_log_writes":          s.Metrics.InnodbPendingLogWrites,
-		"log_flushed_up_to":           s.Metrics.InnodbLogFlushedUpTo,
-		"pages_flushed_up_to":         s.Metrics.PagesFlushedUpTo,
-		"checkpoint_age_target":       s.Metrics.InnodbCheckpointAgeTarget,
-		"pending_chkp_writes":         s.Metrics.InnodbPendingCheckpointWrites,
-		"total_mem_by_read_views":     s.Metrics.TotalMemByReadViews,
-		"page_hash":                   s.Metrics.PageHash,
-		"file_system":                 s.Metrics.FileSystem,
-		"lock_system":                 s.Metrics.LockSystem,
-		"recovery_system":             s.Metrics.RecoverySystem,
-		"database_pages":              s.Metrics.DatabasePages,
-		"pending_reads":               s.Metrics.PendingReads,
-		"buffer_pool_size":            s.Metrics.BufferPoolSize,
-		"total_mem":                   s.Metrics.TotalMem,
-		"adaptive_hash":               s.Metrics.AdaptiveHash,
-		"dictionary_cache":            s.Metrics.DictionaryCache,
-		"old_database_pages":          s.Metrics.OldDatabasePages,
-		"pages_read":                  s.Metrics.PagesRead,
-		"dictionary_memory_allocated": s.Metrics.DictionaryMemoryAllocated,
-		"free_buffers":                s.Metrics.FreeBuffers,
 		"modified_db_pages":           s.Metrics.ModifiedDBPages,
-		"pending_writes_lru":          s.Metrics.LRU,
+		"old_database_pages":          s.Metrics.OldDatabasePages,
+		"page_hash":                   s.Metrics.PageHash,
+		"pages_flushed_up_to":         s.Metrics.PagesFlushedUpTo,
 		"pages_made_young":            s.Metrics.PagesMadeYoung,
-		"buffer_pool_hit_rate":        s.Metrics.BufferPoolHitRate,
-		"cache_hit_pct":               s.Metrics.CacheHitPct,
-		"log_io_per_sec":              s.Metrics.LogIOPerSec,
+		"pages_read":                  s.Metrics.PagesRead,
+		"pending_chkp_writes":         s.Metrics.InnodbPendingCheckpointWrites,
+		"pending_log_writes":          s.Metrics.InnodbPendingLogWrites,
+		"pending_reads":               s.Metrics.PendingReads,
+		"pending_writes_lru":          s.Metrics.LRU,
+		"reads_per_s":                 s.Metrics.ReadsPerSec,
+		"recovery_system":             s.Metrics.RecoverySystem,
+		"total_mem":                   s.Metrics.TotalMem,
+		"total_mem_by_read_views":     s.Metrics.TotalMemByReadViews,
+		"trx_id":                      s.Metrics.TransactionID,
+		"trxes_not_started":           s.Metrics.InnodbTransactionsNotStarted,
+		"undo":                        s.Metrics.InnodbUndo,
+		"writes_per_s":                s.Metrics.WritesPerSec,
 	}
 	for name, metric := range vars {
 		v, ok := idb.Metrics[name]

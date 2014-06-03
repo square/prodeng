@@ -32,12 +32,10 @@ type MysqlStatPerTable struct {
 	RowsRead            *metrics.Counter
 	RowsChanged         *metrics.Counter
 	RowsChangedXIndexes *metrics.Counter
-	//TODO: add the other metrics
 }
 
 type MysqlStatPerDB struct {
 	Size *metrics.Gauge
-	//TODO: add the other metrics
 }
 
 //initializes mysqlstat
