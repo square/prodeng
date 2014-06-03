@@ -1,8 +1,5 @@
 // Copyright (c) 2014 Square, Inc
 //
-// Must download driver for mysql use. Run the following command:
-//      go get github.com/go-sql-driver/mysql
-// in order to successfully build/install
 
 package mysqlstattable
 
@@ -32,9 +29,9 @@ type MysqlStatPerTable struct {
 	Size *metrics.Gauge
 	// These add a lot of metrics, so commented out for easier testing
 	//   potentially consolidate into a per database metric for sake of volume
-	//    RowsRead *metrics.Counter
-	//    RowsChanged *metrics.Counter
-	//    RowsChangedXIndexes *metrics.Counter
+	RowsRead            *metrics.Counter
+	RowsChanged         *metrics.Counter
+	RowsChangedXIndexes *metrics.Counter
 	//TODO: add the other metrics
 }
 
@@ -45,12 +42,12 @@ type MysqlStatPerDB struct {
 
 //initializes mysqlstat
 // starts off collect
-func New(m *metrics.MetricContext, Step time.Duration, user string, password string) (*MysqlStats, error) {
+func New(m *metrics.MetricContext, Step time.Duration, user, password, config string) (*MysqlStats, error) {
 	s := new(MysqlStats)
 	s.m = m
 	// connect to database
 	var err error
-	s.db, err = mysqltools.New(user, password)
+	s.db, err = mysqltools.New(user, password, config)
 	s.DBs = make(map[string]*DBStats)
 	if err != nil { //error in connecting to database
 		return nil, err
@@ -71,7 +68,7 @@ func New(m *metrics.MetricContext, Step time.Duration, user string, password str
 //initialize  per database metrics
 func newMysqlStatPerDB(m *metrics.MetricContext, dbname string) *MysqlStatPerDB {
 	o := new(MysqlStatPerDB)
-	misc.InitializeMetrics(o, m, "sqldbstat."+dbname, true)
+	misc.InitializeMetrics(o, m, "mysqldbstat."+dbname, true)
 	return o
 }
 
@@ -79,14 +76,14 @@ func newMysqlStatPerDB(m *metrics.MetricContext, dbname string) *MysqlStatPerDB 
 func newMysqlStatPerTable(m *metrics.MetricContext, dbname, tblname string) *MysqlStatPerTable {
 	o := new(MysqlStatPerTable)
 
-	misc.InitializeMetrics(o, m, "sqltablestat."+dbname+"."+tblname, true)
+	misc.InitializeMetrics(o, m, "mysqltablestat."+dbname+"."+tblname, true)
 	return o
 }
 
 func (s *MysqlStats) Collect() {
 	s.getDBSizes()
 	s.getTableSizes()
-	//    s.getTableStatistics()
+	s.getTableStatistics()
 }
 
 //instantiate database metrics struct
@@ -169,30 +166,27 @@ func (s *MysqlStats) getTableSizes() error {
 			s.checkTable(dbname, tblname)
 			s.DBs[dbname].Tables[tblname].Size.Set(float64(size)) //this is looking way too complex.
 		}
-
 	}
 	return nil
 }
 
-/*
 func (s *MysqlStats) getTableStatistics() {
 	cmd := `
-  SELECT table_schema AS db, table_name AS tbl,
-         rows_read, rows_changed, rows_changed_x_indexes,
-    FROM INFORMATION_SCHEMA.TABLE_STATISTICS
-   WHERE rows_read > 0;`
+SELECT table_schema AS db, table_name AS tbl, 
+       rows_read, rows_changed, rows_changed_x_indexes  
+  FROM INFORMATION_SCHEMA.TABLE_STATISTICS
+ WHERE rows_read > 0;`
 	res, _ := s.db.QueryReturnColumnDict(cmd)
-	//TODO: implement
-    if len(res) == 0 {
-        return
-    }
-    for i, tblname := range res["tbl"] {
-        dbname := res["db"][i]
-        rows_read, _ := strconv.Atoi(res["rows_read"][i])
-        rows_changed, _ := strconv.Atoi(res["rows_changed"][i])
-        rows_changed_x_indexes, _ := strconv.Atoi(res["rows_changed_x_indexes"][i])
-        s.DBs[dbname].Tables[tblname].RowsRead.Set(uint64(rows_read))
-        s.DBs[dbname].Tables[tblname].RowsChanged.Set(uint64(rows_changed))
-        s.DBs[dbname].Tables[tblname].RowsChangedXIndexes.Set(uint64(rows_changed_x_indexes))
-    }
-} */
+	if len(res) == 0 {
+		return
+	}
+	for i, tblname := range res["tbl"] {
+		dbname := res["db"][i]
+		rows_read, _ := strconv.Atoi(res["rows_read"][i])
+		rows_changed, _ := strconv.Atoi(res["rows_changed"][i])
+		rows_changed_x_indexes, _ := strconv.Atoi(res["rows_changed_x_indexes"][i])
+		s.DBs[dbname].Tables[tblname].RowsRead.Set(uint64(rows_read))
+		s.DBs[dbname].Tables[tblname].RowsChanged.Set(uint64(rows_changed))
+		s.DBs[dbname].Tables[tblname].RowsChangedXIndexes.Set(uint64(rows_changed_x_indexes))
+	}
+}
