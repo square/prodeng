@@ -174,6 +174,7 @@ func (s *MysqlStats) getTableSizes() error {
 	tbl_count := len(res["tbl"])
 	for i := 0; i < tbl_count; i++ {
 		dbname := string(res["db"][i])
+		s.checkDB(dbname)
 		tblname := string(res["tbl"][i])
 		size, _ := strconv.Atoi(string(res["tbl_size_bytes"][i]))
 		if size > 0 {
@@ -196,6 +197,8 @@ SELECT table_schema AS db, table_name AS tbl,
 	}
 	for i, tblname := range res["tbl"] {
 		dbname := res["db"][i]
+		s.checkDB(dbname)
+		s.checkTable(dbname, tblname)
 		rows_read, err := strconv.Atoi(res["rows_read"][i])
 		if err != nil {
 			log.Print(err)
