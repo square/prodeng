@@ -60,10 +60,12 @@ func main() {
 		fmt.Println("Database sizes: ")
 		for dbname, db := range sqlstatTables.DBs {
 			size := db.Metrics.SizeBytes.Get()
+			units := " B"
 			if human {
 				size /= (1024 * 1024)
+				units = " GB"
 			}
-			fmt.Println("    " + dbname + ": " + strconv.FormatFloat(size, 'f', 2, 64) + " GB")
+			fmt.Println("    " + dbname + ": " + strconv.FormatFloat(size, 'f', 2, 64) + units)
 		}
 	}
 

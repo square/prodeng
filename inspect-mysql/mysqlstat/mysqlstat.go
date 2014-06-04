@@ -5,7 +5,6 @@ package mysqlstat
 
 import (
 	"errors"
-	"log"
 	"math"
 	"regexp"
 	"strconv"
@@ -150,7 +149,7 @@ func New(m *metrics.MetricContext, Step time.Duration, user, password, config st
 	var err error
 	s.db, err = mysqltools.New(user, password, config)
 	if err != nil {
-		log.Print(err)
+		s.db.Logger.Println(err)
 		return nil, err
 	}
 	s.Metrics = MysqlStatMetricsNew(m, Step)
@@ -163,8 +162,12 @@ func New(m *metrics.MetricContext, Step time.Duration, user, password, config st
 	go func() {
 		i := 0
 		for _ = range ticker.C {
+
+			//pass in i to each collection function
+			//  some functions are expensive and so should only
+			//  be made once every few cycles
 			s.Collect(i)
-			i = (i + 1) % (40 / int(Step.Seconds())) // set i to 0 every 40 seconds
+			i = (i + 1) % (5) //reset to 0 every 5 cycles
 		}
 	}()
 	return s, nil
@@ -192,7 +195,7 @@ func (s *MysqlStat) Collect(i int) {
 	}
 	for _, err := range collections {
 		if err != nil {
-			log.Print(err)
+			s.db.Logger.Println(err)
 		}
 	}
 }
@@ -211,10 +214,10 @@ func (s *MysqlStat) getSlaveStats() error {
 
 	relay_master_log_file, _ := res["Relay_Master_Log_File"]
 	if len(relay_master_log_file) > 0 {
-		slave_seqfile, err := strconv.Atoi(strings.Split(string(relay_master_log_file[0]), ".")[1])
+		slave_seqfile, err := strconv.ParseInt(strings.Split(string(relay_master_log_file[0]), ".")[1], 10, 64)
 		s.Metrics.SlaveSeqFile.Set(float64(slave_seqfile))
 		if err != nil {
-			log.Print(err)
+			s.db.Logger.Println(err)
 		}
 	}
 
@@ -273,7 +276,7 @@ func (s *MysqlStat) getGlobalStatus() error {
 		if ok && len(v) > 0 {
 			val, err := strconv.ParseFloat(string(v[0]), 64)
 			if err != nil {
-				log.Print(err)
+				s.db.Logger.Println(err)
 			}
 			switch met := metric.(type) {
 			case *metrics.Counter:
@@ -304,7 +307,7 @@ func (s *MysqlStat) getInnodbBufferpoolMutexWaits(i int) error {
 			if !strings.Contains(status, "os_waits=") {
 				return errors.New("mutex status did not contain 'os_waits=': " + status)
 			}
-			os_waits, err := strconv.Atoi(status[9:])
+			os_waits, err := strconv.ParseInt(status[9:], 10, 64)
 			if err != nil {
 				return err
 			}
@@ -325,11 +328,11 @@ func (s *MysqlStat) getOldest() error {
 	if err != nil {
 		return err
 	}
-	t := 0
+	t := int64(0)
 	if time, ok := res["time"]; ok && len(time) > 0 {
-		t, err = strconv.Atoi(time[0])
+		t, err = strconv.ParseInt(time[0], 10, 64)
 		if err != nil {
-			log.Print(err)
+			s.db.Logger.Println(err)
 		}
 	}
 	s.Metrics.OldestQuery.Set(float64(t))
@@ -360,9 +363,9 @@ func (s *MysqlStat) getQueryResponseTime() error {
 	}
 
 	for i, time := range res["time"] {
-		count, err := strconv.Atoi(res["count"][i])
+		count, err := strconv.ParseInt(res["count"][i], 10, 64)
 		if err != nil {
-			log.Print(err)
+			s.db.Logger.Println(err)
 		}
 		if count < 1 {
 			continue
@@ -382,13 +385,13 @@ func (s *MysqlStat) getBinlogFiles() error {
 		return err
 	}
 	s.Metrics.BinlogFiles.Set(float64(len(res["File_size"])))
-	binlog_total_size := 0
+	binlog_total_size := int64(0)
 	for _, size := range res["File_size"] {
-		s, err := strconv.Atoi(size)
+		si, err := strconv.ParseInt(size, 10, 64)
 		if err != nil {
-			log.Print(err) //don't return err so we can continue with more values
+			s.db.Logger.Println(err) //don't return err so we can continue with more values
 		}
-		binlog_total_size += s
+		binlog_total_size += si
 	}
 	s.Metrics.BinlogSize.Set(float64(binlog_total_size))
 	return nil
@@ -426,7 +429,7 @@ func (s *MysqlStat) getVersion() error {
 		return r
 	}
 	version = strings.Replace(strings.Map(f, version), "A", "", -1)
-	version = strings.Replace(version, "_", ".", -1)
+	version = strings.Replace(strings.Replace(version, "-", ".", -1), "_", ".", -1)
 	leading := float64(len(strings.Split(version, ".")[0]))
 	version = strings.Replace(version, ".", "", -1)
 	ver, err := strconv.ParseFloat(version, 64)
@@ -447,12 +450,12 @@ func (s *MysqlStat) getBinlogStats() error {
 
 	v, err := strconv.ParseFloat(strings.Split(string(res["File"][0]), ".")[1], 64)
 	if err != nil {
-		log.Print(err)
+		s.db.Logger.Println(err)
 	}
 	s.Metrics.BinlogSeqFile.Set(float64(v))
 	v, err = strconv.ParseFloat(string(res["Position"][0]), 64)
 	if err != nil {
-		log.Print(err)
+		s.db.Logger.Println(err)
 	}
 	s.Metrics.BinlogPosition.Set(uint64(v))
 	return nil
@@ -481,12 +484,12 @@ func (s *MysqlStat) getStackedQueries() error {
 	if len(res["identical_queries_stacked"]) > 0 {
 		count, err := strconv.ParseFloat(string(res["identical_queries_stacked"][0]), 64)
 		if err != nil {
-			log.Print(err)
+			s.db.Logger.Println(err)
 		}
 		s.Metrics.IdenticalQueriesStacked.Set(float64(count))
 		age, err := strconv.ParseFloat(string(res["max_age"][0]), 64)
 		if err != nil {
-			log.Print(err)
+			s.db.Logger.Println(err)
 		}
 		s.Metrics.IdenticalQueriesMaxAge.Set(float64(age))
 	}
@@ -499,11 +502,11 @@ func (s *MysqlStat) getSessions() error {
 	if err != nil {
 		return err
 	}
-	var max_sessions int
+	var max_sessions int64
 	for _, val := range res {
-		max_sessions, err = strconv.Atoi(val[0])
+		max_sessions, err = strconv.ParseInt(val[0], 10, 64)
 		if err != nil {
-			log.Print(err)
+			s.db.Logger.Println(err)
 		}
 		s.Metrics.MaxConnections.Set(float64(max_sessions))
 	}
@@ -569,11 +572,11 @@ func (s *MysqlStat) getInnodbStats() error {
 	if err != nil {
 		return err
 	}
-	var innodb_log_file_size int
+	var innodb_log_file_size int64
 	if err == nil && len(res["Value"]) > 0 {
-		innodb_log_file_size, err = strconv.Atoi(res["Value"][0])
+		innodb_log_file_size, err = strconv.ParseInt(res["Value"][0], 10, 64)
 		if err != nil {
-			log.Print(err)
+			s.db.Logger.Println(err)
 		}
 	}
 
@@ -636,7 +639,7 @@ func (s *MysqlStat) getInnodbStats() error {
 		if ok {
 			val, err := strconv.ParseFloat(string(v), 64)
 			if err != nil {
-				log.Print(err)
+				s.db.Logger.Println(err)
 			}
 			switch met := metric.(type) {
 			case *metrics.Counter:
