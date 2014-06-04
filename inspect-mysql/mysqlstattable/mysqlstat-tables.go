@@ -224,12 +224,21 @@ SELECT table_schema AS db, table_name AS tbl,
 		if err != nil {
 			s.db.Logger.Println(err)
 		}
-		s.checkDB(dbname)
-		s.checkTable(dbname, tblname)
-
-		s.DBs[dbname].Tables[tblname].RowsRead.Set(uint64(rows_read))
-		s.DBs[dbname].Tables[tblname].RowsChanged.Set(uint64(rows_changed))
-		s.DBs[dbname].Tables[tblname].RowsChangedXIndexes.Set(uint64(rows_changed_x_indexes))
+		if rows_read > 0 {
+			s.checkDB(dbname)
+			s.checkTable(dbname, tblname)
+			s.DBs[dbname].Tables[tblname].RowsRead.Set(uint64(rows_read))
+		}
+		if rows_changed > 0 {
+			s.checkDB(dbname)
+			s.checkTable(dbname, tblname)
+			s.DBs[dbname].Tables[tblname].RowsRead.Set(uint64(rows_changed))
+		}
+		if rows_changed_x_indexes > 0 {
+			s.checkDB(dbname)
+			s.checkTable(dbname, tblname)
+			s.DBs[dbname].Tables[tblname].RowsRead.Set(uint64(rows_changed_x_indexes))
+		}
 	}
 	return nil
 }

@@ -32,10 +32,6 @@ const (
 	MAX_RETRIES        = 5
 )
 
-type Configuration struct {
-	password []string
-}
-
 type Config struct {
 	Client struct {
 		Password string
