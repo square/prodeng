@@ -6,6 +6,7 @@ package mysqlstat
 import (
 	"errors"
 	"math"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -22,7 +23,7 @@ type MysqlStat struct {
 	db      *mysqltools.MysqlDB //mysql connection
 }
 
-//metrics being collected about the server/database
+// metrics being collected about the server/database
 type MysqlStatMetrics struct {
 	ASFsynce                      *metrics.Gauge
 	ActiveLongRunQueries          *metrics.Gauge
@@ -38,6 +39,7 @@ type MysqlStatMetrics struct {
 	BufferPoolHitRate             *metrics.Gauge
 	BufferPoolSize                *metrics.Gauge
 	BusySessionPct                *metrics.Gauge
+	BackupsRunning                *metrics.Gauge
 	CacheHitPct                   *metrics.Gauge
 	ComAlterTable                 *metrics.Counter
 	ComBegin                      *metrics.Counter
@@ -164,7 +166,7 @@ func New(m *metrics.MetricContext, Step time.Duration, user, password, config st
 			//pass in i to each collection function
 			//  some functions are expensive and so should only
 			//  be made once every few cycles
-			s.Collect(i)
+			go s.Collect(i)
 			i = (i + 1) % (5) //reset to 0 every 5 cycles
 		}
 	}()
@@ -190,6 +192,7 @@ func (s *MysqlStat) Collect(i int) {
 		s.getNumLongRunQueries(),
 		s.getInnodbBufferpoolMutexWaits(i),
 		s.getQueryResponseTime(),
+		s.getBackups(),
 	}
 	for _, err := range collections {
 		if err != nil {
@@ -206,7 +209,10 @@ func (s *MysqlStat) getSlaveStats() error {
 	}
 
 	if len(res["Seconds_Behind_Master"]) > 0 {
-		seconds_behind_master, _ := strconv.ParseFloat(string(res["Seconds_Behind_Master"][0]), 64)
+		seconds_behind_master, err := strconv.ParseFloat(string(res["Seconds_Behind_Master"][0]), 64)
+		if err != nil {
+			s.db.Logger.Println(err)
+		}
 		s.Metrics.SlaveSecondsBehindMaster.Set(float64(seconds_behind_master))
 	}
 
@@ -459,8 +465,7 @@ func (s *MysqlStat) getBinlogStats() error {
 	return nil
 }
 
-//detect application bugs which result in multiple instance of the same
-// query "stacking up"/ executing at the same time
+//detect application bugs which result in multiple instance of the same query "stacking up"/ executing at the same time
 func (s *MysqlStat) getStackedQueries() error {
 	cmd := `
   SELECT COUNT(*) AS identical_queries_stacked, 
@@ -651,6 +656,30 @@ func (s *MysqlStat) getInnodbStats() error {
 		lsn_s, _ := strconv.ParseFloat(lsn, 64)
 		s.Metrics.InnodbLogWriteRatio.Set((lsn_s * 3600.0) / float64(innodb_log_file_size))
 	}
+	return nil
+}
+
+func (s *MysqlStat) getBackups() error {
+	out, err := exec.Command("ps", "aux").Output()
+	if err != nil {
+		return err
+	}
+	blob := string(out)
+	lines := strings.Split(blob, "\n")
+	backupProcs := 0
+	for _, line := range lines {
+		words := strings.Split(line, " ")
+		if len(words) < 10 {
+			continue
+		}
+		command := strings.Join(words[10:], " ")
+		if strings.Contains(command, "innobackupex") ||
+			strings.Contains(command, "mysqldump") ||
+			strings.Contains(command, "mydumper") {
+			backupProcs += 1
+		}
+	}
+	s.Metrics.BackupsRunning.Set(float64(backupProcs))
 	return nil
 }
 

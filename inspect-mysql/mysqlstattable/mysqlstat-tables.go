@@ -60,7 +60,7 @@ func New(m *metrics.MetricContext, Step time.Duration, user, password, config st
 	ticker := time.NewTicker(Step)
 	go func() {
 		for _ = range ticker.C {
-			s.Collect()
+			go s.Collect()
 		}
 	}()
 	return s, nil
