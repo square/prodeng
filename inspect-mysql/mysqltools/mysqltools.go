@@ -242,11 +242,10 @@ func (idb *InnodbStats) parseFileIO(blob string) {
 			elements := strings.Split(line, ",")
 			for _, element := range elements {
 				element = strings.Trim(element, " \n")
-				m := regexp.MustCompile("^(\\d+(\\.\\d+)?) ([A-Za-z/ ]+)\\s*$").MatchString(element)
-				if m {
-					s := strings.Split(strings.Trim(element, " \n"), " ")
-					key := strings.Replace(strings.Join(s[1:], "_"), "/", "_per_", -1)
-					idb.Metrics[key] = s[0]
+				m := regexp.MustCompile("^(\\d+(\\.\\d+)?) ([A-Za-z/ ]+)\\s*$").FindStringSubmatch(element)
+				if len(m) == 4 {
+					key := strings.Replace(strings.Replace(m[3], " ", "_", -1), "/", "_per_", -1)
+					idb.Metrics[key] = m[1]
 				}
 			}
 		}
@@ -324,19 +323,20 @@ func (idb *InnodbStats) parseTransactions(blob string) {
 	trxes_not_started := 0
 	undo := 0
 	lines := strings.Split(blob, "\n")
+	rollbackexpr := "^ROLLING BACK \\d+ lock struct\\(s\\), heap size \\d+, \\d+ row lock\\(s\\), undo log entries (\\d+)"
 	for _, line := range lines {
 		line = strings.Trim(line, " ")
-		if regexp.MustCompile("^(.+?)\\s+(\\d+)\\s*$").MatchString(line) {
+		if m := regexp.MustCompile(rollbackexpr).FindStringSubmatch(line); len(m) > 0 {
+			tmp, _ := strconv.Atoi(m[1])
+			if tmp > undo {
+				undo = tmp
+			}
+		} else if regexp.MustCompile("^(.+?)\\s+(\\d+)\\s*$").MatchString(line) {
 			words := strings.Split(line, " ")
 			key := strings.ToLower(strings.Join(words[:len(words)-2], "_"))
 			idb.Metrics[key] = words[len(words)-1]
 		} else if m, _ := regexp.MatchString("TRANSACTION (.*) not started", line); m {
 			trxes_not_started += 1
-		} else if m, _ := regexp.MatchString("ROLLING BACK (\\d+)", line); m {
-			tmp, _ := strconv.Atoi(strings.Split(line, " ")[2])
-			if tmp > undo {
-				undo = tmp
-			}
 		}
 	}
 	idb.Metrics["trxes_not_started"] = strconv.Itoa(trxes_not_started)

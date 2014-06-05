@@ -154,8 +154,6 @@ func New(m *metrics.MetricContext, Step time.Duration, user, password, config st
 	}
 	s.Metrics = MysqlStatMetricsNew(m, Step)
 
-	defer s.db.Close()
-
 	s.Collect(0)
 
 	ticker := time.NewTicker(Step)
@@ -654,6 +652,10 @@ func (s *MysqlStat) getInnodbStats() error {
 		s.Metrics.InnodbLogWriteRatio.Set((lsn_s * 3600.0) / float64(innodb_log_file_size))
 	}
 	return nil
+}
+
+func (s *MysqlStat) Close() {
+	s.db.Close()
 }
 
 func (s *MysqlStat) Queries() uint64 {

@@ -55,7 +55,6 @@ func New(m *metrics.MetricContext, Step time.Duration, user, password, config st
 		return nil, err
 	}
 
-	defer s.db.Close()
 	s.Collect()
 
 	ticker := time.NewTicker(Step)
@@ -241,4 +240,8 @@ SELECT table_schema AS db, table_name AS tbl,
 		}
 	}
 	return nil
+}
+
+func (s *MysqlStatTables) Close() {
+	s.db.Close()
 }
