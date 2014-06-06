@@ -14,6 +14,7 @@ import (
 	"os/user"
 	"path"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -76,6 +77,26 @@ func NewProcessStat(m *metrics.MetricContext, Step time.Duration) *ProcessStat {
 func (s *ProcessStat) SetPidFilter(filter PidFilterFunc) {
 	s.filter = filter
 	return
+}
+
+// Return list of processes sorted by IO
+type ByIOUsage []*PerProcessStat
+
+func (a ByIOUsage) Len() int           { return len(a) }
+func (a ByIOUsage) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByIOUsage) Less(i, j int) bool { return a[i].IOUsage() > a[j].IOUsage() }
+
+// ByIOUsage() returns an slice of *PerProcessStat entries sorted
+// by Memory usage
+func (c *ProcessStat) ByIOUsage() []*PerProcessStat {
+	v := make([]*PerProcessStat, 0)
+	for _, o := range c.Processes {
+		if !math.IsNaN(o.IOUsage()) {
+			v = append(v, o)
+		}
+	}
+	sort.Sort(ByIOUsage(v))
+	return v
 }
 
 // CPUUsagePerCgroup returns cumulative CPU usage by cgroup
@@ -201,6 +222,11 @@ func (s *PerProcessStat) MemUsage() float64 {
 	return o.Rss.Get() * float64(PAGESIZE)
 }
 
+func (s *PerProcessStat) IOUsage() float64 {
+	o := s.Metrics
+	return o.IOReadBytes.ComputeRate() + o.IOWriteBytes.ComputeRate()
+}
+
 func (s *PerProcessStat) Pid() string {
 	return s.Metrics.Pid
 }
@@ -304,12 +330,14 @@ func (s *PerProcessStat) Cgroup(subsys string) string {
 }
 
 type PerProcessStatMetrics struct {
-	Pid   string
-	Utime *metrics.Counter
-	Stime *metrics.Counter
-	Rss   *metrics.Gauge
-	m     *metrics.MetricContext
-	dead  bool
+	Pid          string
+	Utime        *metrics.Counter
+	Stime        *metrics.Counter
+	Rss          *metrics.Gauge
+	IOReadBytes  *metrics.Counter
+	IOWriteBytes *metrics.Counter
+	m            *metrics.MetricContext
+	dead         bool
 }
 
 func NewPerProcessStatMetrics(m *metrics.MetricContext, pid string) *PerProcessStatMetrics {
@@ -331,6 +359,8 @@ func (s *PerProcessStatMetrics) Register() {
 	s.m.Register(s.Utime, prefix+"."+"Utime")
 	s.m.Register(s.Stime, prefix+"."+"Stime")
 	s.m.Register(s.Rss, prefix+"."+"Rss")
+	s.m.Register(s.IOReadBytes, prefix+"."+"IOReadBytes")
+	s.m.Register(s.IOWriteBytes, prefix+"."+"IOWriteBytes")
 }
 
 // Unregister metrics with metriccontext
@@ -339,6 +369,8 @@ func (s *PerProcessStatMetrics) Unregister() {
 	s.m.Unregister(s.Utime, prefix+"."+"Utime")
 	s.m.Unregister(s.Stime, prefix+"."+"Stime")
 	s.m.Unregister(s.Rss, prefix+"."+"Rss")
+	s.m.Unregister(s.IOReadBytes, prefix+"."+"IOReadBytes")
+	s.m.Unregister(s.IOWriteBytes, prefix+"."+"IOWriteBytes")
 }
 
 func (s *PerProcessStatMetrics) Reset(pid string) {
@@ -346,9 +378,13 @@ func (s *PerProcessStatMetrics) Reset(pid string) {
 	s.Utime.Reset()
 	s.Stime.Reset()
 	s.Rss.Reset()
+	s.IOReadBytes.Reset()
+	s.IOWriteBytes.Reset()
 }
 
+// Collect() collects per process CPU/Memory/IO metrics
 func (s *PerProcessStatMetrics) Collect() {
+
 	file, err := os.Open("/proc/" + s.Pid + "/stat")
 	defer file.Close()
 
@@ -362,5 +398,25 @@ func (s *PerProcessStatMetrics) Collect() {
 		s.Utime.Set(misc.ParseUint(f[13]))
 		s.Stime.Set(misc.ParseUint(f[14]))
 		s.Rss.Set(float64(misc.ParseUint(f[23])))
+	}
+
+	// collect IO metrics
+	// only works if we are superuser on Linux
+	file, err = os.Open("/proc/" + s.Pid + "/io")
+	defer file.Close()
+
+	if err != nil {
+		return
+	}
+
+	scanner = bufio.NewScanner(file)
+	for scanner.Scan() {
+		f := strings.Split(scanner.Text(), " ")
+		switch f[0] {
+		case "read_bytes:":
+			s.IOReadBytes.Set(misc.ParseUint(f[1]))
+		case "write_bytes:":
+			s.IOWriteBytes.Set(misc.ParseUint(f[1]))
+		}
 	}
 }

@@ -62,6 +62,13 @@ mem: 10.97MB command: (bash) user: s pid: 15146
 mem: 7.95MB command: (zsh) user: s pid: 13572
 mem: 7.34MB command: (bash) user: s pid: 6478
 ---
+Top processes by IO usage:
+io: 14.47MB/s command: (carbon-cache.py) user: apache pid: 19747
+io: 8.00KB/s command: (svlogd) user: nobody pid: 1757
+io: 0.00B/s command: (carbon-relay.py) user: apache pid: 1792
+io: 0.00B/s command: (carbon-relay.py) user: apache pid: 1796
+io: 0.00B/s command: (watchdog/1) user: root pid: 10
+---
 diskio: sr0 usage: 0.0%
 diskio: sda usage: 0.0%
 diskio: sdb usage: 92.7%
