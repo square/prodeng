@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -43,12 +44,12 @@ func main() {
 	sqlstat, err := mysqlstat.New(m, step, user, password, conf)
 	if err != nil {
 		fmt.Println(err)
-		return
+		os.Exit(1)
 	}
 	sqlstatTables, err := mysqlstattable.New(m, step, user, password, conf)
 	if err != nil {
 		fmt.Println(err)
-		return
+		os.Exit(1)
 	}
 	ticker := time.NewTicker(step * 2)
 	for _ = range ticker.C {

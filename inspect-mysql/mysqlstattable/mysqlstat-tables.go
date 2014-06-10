@@ -83,16 +83,9 @@ func newMysqlStatPerTable(m *metrics.MetricContext, dbname, tblname string) *Mys
 
 //collects metrics
 func (s *MysqlStatTables) Collect() {
-	collections := []error{
-		s.getDBSizes(),
-		s.getTableSizes(),
-		s.getTableStatistics(),
-	}
-	for _, err := range collections {
-		if err != nil {
-			s.db.Logger.Println(err)
-		}
-	}
+	go s.getDBSizes()
+	go s.getTableSizes()
+	go s.getTableStatistics()
 }
 
 //instantiate database metrics struct
@@ -104,32 +97,34 @@ func (s *MysqlStatTables) initializeDB(dbname string) *DBStats {
 }
 
 //check if database struct is instantiated, and instantiate if not
-func (s *MysqlStatTables) checkDB(dbname string) error {
+func (s *MysqlStatTables) checkDB(dbname string) {
 	if _, ok := s.DBs[dbname]; !ok {
 		s.DBs[dbname] = s.initializeDB(dbname)
 	}
-	return nil
+	return
 }
 
 //check if table struct is instantiated, and instantiate if not
-func (s *MysqlStatTables) checkTable(dbname, tblname string) error {
+func (s *MysqlStatTables) checkTable(dbname, tblname string) {
 	s.checkDB(dbname)
 	if _, ok := s.DBs[dbname].Tables[tblname]; !ok {
 		s.DBs[dbname].Tables[tblname] = newMysqlStatPerTable(s.m, dbname, tblname)
 	}
-	return nil
+	return
 }
 
 //gets sizes of databases
-func (s *MysqlStatTables) getDBSizes() error {
+func (s *MysqlStatTables) getDBSizes() {
 	res, err := s.db.QueryReturnColumnDict("SELECT @@GLOBAL.innodb_stats_on_metadata;")
 	if err != nil {
-		return err
+		s.db.Logger.Println(err)
+		return
 	}
 	for _, val := range res {
 		if v, _ := strconv.ParseInt(string(val[0]), 10, 64); v == 1 {
 			fmt.Println("Not capturing db/tbl sizes because @@GLOBAL.innodb_stats_on_metadata = 1")
-			return errors.New("not capturing sizes: innodb_stats_on_metadata = 1")
+			s.db.Logger.Println(errors.New("not capturing sizes: innodb_stats_on_metadata = 1"))
+			return
 		}
 		break
 	}
@@ -142,7 +137,8 @@ func (s *MysqlStatTables) getDBSizes() error {
 
 	res, err = s.db.QueryMapFirstColumnToRow(cmd)
 	if err != nil {
-		return err
+		s.db.Logger.Println(err)
+		return
 	}
 	for key, value := range res {
 		//key being the name of the database, value being its size in bytes
@@ -153,19 +149,20 @@ func (s *MysqlStatTables) getDBSizes() error {
 			s.DBs[dbname].Metrics.SizeBytes.Set(float64(size))
 		}
 	}
-	return nil
+	return
 }
 
 //gets sizes of tables within databases
-func (s *MysqlStatTables) getTableSizes() error {
+func (s *MysqlStatTables) getTableSizes() {
 	res, err := s.db.QueryReturnColumnDict("SELECT @@GLOBAL.innodb_stats_on_metadata;")
 	if err != nil {
-		return err
+		s.db.Logger.Println(err)
+		return
 	}
 	for _, val := range res {
 		if v, _ := strconv.ParseInt(string(val[0]), 10, 64); v == int64(1) {
 			fmt.Println("Not capturing db/tbl sizes because @@GLOBAL.innodb_stats_on_metadata = 1")
-			return errors.New("not capturing sizes: innodb_stats_on_metadata = 1")
+			s.db.Logger.Println(errors.New("not capturing sizes: innodb_stats_on_metadata = 1"))
 		}
 		break
 	}
@@ -176,7 +173,8 @@ func (s *MysqlStatTables) getTableSizes() error {
      WHERE table_schema NOT IN ('performance_schema', 'information_schema', 'mysql');`
 	res, err = s.db.QueryReturnColumnDict(cmd)
 	if err != nil {
-		return err
+		s.db.Logger.Println(err)
+		return
 	}
 	tbl_count := len(res["tbl"])
 	for i := 0; i < tbl_count; i++ {
@@ -195,11 +193,11 @@ func (s *MysqlStatTables) getTableSizes() error {
 			s.DBs[dbname].Tables[tblname].SizeBytes.Set(float64(size))
 		}
 	}
-	return nil
+	return
 }
 
 //get table statistics: rows read, rows changed, rows changed x indices
-func (s *MysqlStatTables) getTableStatistics() error {
+func (s *MysqlStatTables) getTableStatistics() {
 	cmd := `
 SELECT table_schema AS db, table_name AS tbl, 
        rows_read, rows_changed, rows_changed_x_indexes  
@@ -207,7 +205,8 @@ SELECT table_schema AS db, table_name AS tbl,
  WHERE rows_read > 0;`
 	res, err := s.db.QueryReturnColumnDict(cmd)
 	if len(res) == 0 || err != nil {
-		return err
+		s.db.Logger.Println(err)
+		return
 	}
 	for i, tblname := range res["tbl"] {
 		dbname := res["db"][i]
@@ -239,7 +238,7 @@ SELECT table_schema AS db, table_name AS tbl,
 			s.DBs[dbname].Tables[tblname].RowsRead.Set(uint64(rows_changed_x_indexes))
 		}
 	}
-	return nil
+	return
 }
 
 func (s *MysqlStatTables) Close() {
