@@ -14,12 +14,32 @@ import (
 	"github.com/square/prodeng/metrics"
 )
 
+const (
+	innodbMetadataCheck = "SELECT @@GLOBAL.innodb_stats_on_metadata;"
+	dbSizesQuery        = `
+  SELECT table_schema AS db,
+         SUM( data_length + index_length ) AS db_size_bytes
+    FROM information_schema.TABLES
+   WHERE table_schema NOT IN ('performance_schema', 'information_schema', 'mysql')
+   GROUP BY 1;`
+	tblSizesQuery = `
+    SELECT table_schema AS db, table_name as tbl,
+           data_length + index_length AS tbl_size_bytes
+      FROM information_schema.TABLES
+     WHERE table_schema NOT IN ('performance_schema', 'information_schema', 'mysql');`
+	tblStatisticsQuery = `
+SELECT table_schema AS db, table_name AS tbl, 
+       rows_read, rows_changed, rows_changed_x_indexes  
+  FROM INFORMATION_SCHEMA.TABLE_STATISTICS
+ WHERE rows_read > 0;`
+)
+
 // Structs:
 // MysqlStatTables - main struct that contains connection to database, metric context, and map to database stats struct
 type MysqlStatTables struct {
 	DBs map[string]*DBStats
 	m   *metrics.MetricContext
-	db  *mysqltools.MysqlDB
+	db  mysqltools.MysqlDB
 }
 
 //DBStats - database stats struct
@@ -115,29 +135,23 @@ func (s *MysqlStatTables) checkTable(dbname, tblname string) {
 
 //gets sizes of databases
 func (s *MysqlStatTables) getDBSizes() {
-	res, err := s.db.QueryReturnColumnDict("SELECT @@GLOBAL.innodb_stats_on_metadata;")
+	res, err := s.db.QueryReturnColumnDict(innodbMetadataCheck)
 	if err != nil {
-		s.db.Logger.Println(err)
+		s.db.Log(err)
 		return
 	}
 	for _, val := range res {
 		if v, _ := strconv.ParseInt(string(val[0]), 10, 64); v == 1 {
 			fmt.Println("Not capturing db/tbl sizes because @@GLOBAL.innodb_stats_on_metadata = 1")
-			s.db.Logger.Println(errors.New("not capturing sizes: innodb_stats_on_metadata = 1"))
+			s.db.Log(errors.New("not capturing sizes: innodb_stats_on_metadata = 1"))
 			return
 		}
 		break
 	}
-	cmd := `
-  SELECT table_schema AS db,
-         SUM( data_length + index_length ) AS db_size_bytes
-    FROM information_schema.TABLES
-   WHERE table_schema NOT IN ('performance_schema', 'information_schema', 'mysql')
-   GROUP BY 1;`
 
-	res, err = s.db.QueryMapFirstColumnToRow(cmd)
+	res, err = s.db.QueryMapFirstColumnToRow(dbSizesQuery)
 	if err != nil {
-		s.db.Logger.Println(err)
+		s.db.Log(err)
 		return
 	}
 	for key, value := range res {
@@ -154,26 +168,22 @@ func (s *MysqlStatTables) getDBSizes() {
 
 //gets sizes of tables within databases
 func (s *MysqlStatTables) getTableSizes() {
-	res, err := s.db.QueryReturnColumnDict("SELECT @@GLOBAL.innodb_stats_on_metadata;")
+	res, err := s.db.QueryReturnColumnDict(innodbMetadataCheck)
 	if err != nil {
-		s.db.Logger.Println(err)
+		s.db.Log(err)
 		return
 	}
 	for _, val := range res {
 		if v, _ := strconv.ParseInt(string(val[0]), 10, 64); v == int64(1) {
 			fmt.Println("Not capturing db/tbl sizes because @@GLOBAL.innodb_stats_on_metadata = 1")
-			s.db.Logger.Println(errors.New("not capturing sizes: innodb_stats_on_metadata = 1"))
+			s.db.Log(errors.New("not capturing sizes: innodb_stats_on_metadata = 1"))
+			return
 		}
 		break
 	}
-	cmd := `
-    SELECT table_schema AS db, table_name as tbl,
-           data_length + index_length AS tbl_size_bytes
-      FROM information_schema.TABLES
-     WHERE table_schema NOT IN ('performance_schema', 'information_schema', 'mysql');`
-	res, err = s.db.QueryReturnColumnDict(cmd)
+	res, err = s.db.QueryReturnColumnDict(tblSizesQuery)
 	if err != nil {
-		s.db.Logger.Println(err)
+		s.db.Log(err)
 		return
 	}
 	tbl_count := len(res["tbl"])
@@ -186,7 +196,7 @@ func (s *MysqlStatTables) getTableSizes() {
 		s.checkDB(dbname)
 		size, err := strconv.ParseInt(string(res["tbl_size_bytes"][i]), 10, 64)
 		if err != nil {
-			s.db.Logger.Println(err)
+			s.db.Log(err)
 		}
 		if size > 0 {
 			s.checkTable(dbname, tblname)
@@ -198,29 +208,24 @@ func (s *MysqlStatTables) getTableSizes() {
 
 //get table statistics: rows read, rows changed, rows changed x indices
 func (s *MysqlStatTables) getTableStatistics() {
-	cmd := `
-SELECT table_schema AS db, table_name AS tbl, 
-       rows_read, rows_changed, rows_changed_x_indexes  
-  FROM INFORMATION_SCHEMA.TABLE_STATISTICS
- WHERE rows_read > 0;`
-	res, err := s.db.QueryReturnColumnDict(cmd)
+	res, err := s.db.QueryReturnColumnDict(tblStatisticsQuery)
 	if len(res) == 0 || err != nil {
-		s.db.Logger.Println(err)
+		s.db.Log(err)
 		return
 	}
 	for i, tblname := range res["tbl"] {
 		dbname := res["db"][i]
 		rows_read, err := strconv.ParseInt(res["rows_read"][i], 10, 64)
 		if err != nil {
-			s.db.Logger.Println(err)
+			s.db.Log(err)
 		}
 		rows_changed, err := strconv.ParseInt(res["rows_changed"][i], 10, 64)
 		if err != nil {
-			s.db.Logger.Println(err)
+			s.db.Log(err)
 		}
 		rows_changed_x_indexes, err := strconv.ParseInt(res["rows_changed_x_indexes"][i], 10, 64)
 		if err != nil {
-			s.db.Logger.Println(err)
+			s.db.Log(err)
 		}
 		if rows_read > 0 {
 			s.checkDB(dbname)
@@ -230,12 +235,12 @@ SELECT table_schema AS db, table_name AS tbl,
 		if rows_changed > 0 {
 			s.checkDB(dbname)
 			s.checkTable(dbname, tblname)
-			s.DBs[dbname].Tables[tblname].RowsRead.Set(uint64(rows_changed))
+			s.DBs[dbname].Tables[tblname].RowsChanged.Set(uint64(rows_changed))
 		}
 		if rows_changed_x_indexes > 0 {
 			s.checkDB(dbname)
 			s.checkTable(dbname, tblname)
-			s.DBs[dbname].Tables[tblname].RowsRead.Set(uint64(rows_changed_x_indexes))
+			s.DBs[dbname].Tables[tblname].RowsChangedXIndexes.Set(uint64(rows_changed_x_indexes))
 		}
 	}
 	return

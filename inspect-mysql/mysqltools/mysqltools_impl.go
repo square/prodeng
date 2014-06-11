@@ -21,7 +21,7 @@ import (
 import "database/sql"
 import _ "github.com/go-sql-driver/mysql"
 
-type MysqlDB struct {
+type mysqlDB struct {
 	db        *sql.DB
 	dsnString string
 	Logger    *log.Logger
@@ -48,7 +48,7 @@ type InnodbStats struct {
 
 //wrapper for make_query, where if there is an error querying the database
 // retry connecting to the db and make the query
-func (database *MysqlDB) queryDb(query string) ([]string, [][]string, error) {
+func (database *mysqlDB) queryDb(query string) ([]string, [][]string, error) {
 	var err error
 	for attempts := 0; attempts <= MAX_RETRIES; attempts++ {
 		err = database.db.Ping()
@@ -69,7 +69,7 @@ func (database *MysqlDB) queryDb(query string) ([]string, [][]string, error) {
 // returns array of column names and arrays of data stored as string
 // string equivalent to []byte
 // data stored as 2d array with each subarray containing a single column's data
-func (database *MysqlDB) makeQuery(query string) ([]string, [][]string, error) {
+func (database *mysqlDB) makeQuery(query string) ([]string, [][]string, error) {
 	rows, err := database.db.Query(query)
 	if err != nil {
 		return nil, nil, err
@@ -105,7 +105,7 @@ func (database *MysqlDB) makeQuery(query string) ([]string, [][]string, error) {
 }
 
 //return values of query in a mapping of column_name -> column
-func (database *MysqlDB) QueryReturnColumnDict(query string) (map[string][]string, error) {
+func (database *mysqlDB) QueryReturnColumnDict(query string) (map[string][]string, error) {
 	column_names, values, err := database.queryDb(query)
 	result := make(map[string][]string)
 	for i, col := range column_names {
@@ -115,7 +115,7 @@ func (database *MysqlDB) QueryReturnColumnDict(query string) (map[string][]strin
 }
 
 //return values of query in a mapping of first columns entry -> row
-func (database *MysqlDB) QueryMapFirstColumnToRow(query string) (map[string][]string, error) {
+func (database *mysqlDB) QueryMapFirstColumnToRow(query string) (map[string][]string, error) {
 	_, values, err := database.queryDb(query)
 	result := make(map[string][]string)
 	if len(values) == 0 {
@@ -152,12 +152,15 @@ func makeDsn(dsn map[string]string) string {
 
 // create connection to mysql database here
 // when an error is encountered, still return database so that the logger may be used
-func New(user, password, config string) (*MysqlDB, error) {
-	database := new(MysqlDB)
+func New(user, password, config string) (MysqlDB, error) {
+
 	dsn := map[string]string{"db": "information_schema"}
 	creds := map[string]string{"root": "/root/.my.cnf", "nrpe": "/etc/my_nrpe.cnf"}
 
-	database.Logger = log.New(os.Stderr, "LOG: ", log.Lshortfile)
+    database := &mysqlDB {
+        Logger : log.New(os.Stderr, "LOG: ", log.Lshortfile),
+    }
+//	database.Logger = log.New(os.Stderr, "LOG: ", log.Lshortfile)
 
 	if user == "" {
 		user = DEFAULT_MYSQL_USER
@@ -196,7 +199,7 @@ func New(user, password, config string) (*MysqlDB, error) {
 	if err != nil {
 		return database, err
 	}
-	database.db = db
+    database.db = db
 
 	err = database.db.Ping()
 	if err != nil {
@@ -206,7 +209,11 @@ func New(user, password, config string) (*MysqlDB, error) {
 	return database, nil
 }
 
-func (database *MysqlDB) Close() {
+func (database *mysqlDB) Log(in interface{}) {
+    database.Logger.Println(in)
+}
+
+func (database *mysqlDB) Close() {
 	database.db.Close()
 }
 
