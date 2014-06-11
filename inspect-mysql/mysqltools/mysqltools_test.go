@@ -5,9 +5,7 @@
 package mysqltools
 
 import (
-	"fmt"
 	"os"
-	"strings"
 	"testing"
 )
 
@@ -22,7 +20,6 @@ const (
 
 //Basic parse. should run correctly
 func TestParseInnodbStats(t *testing.T) {
-	fmt.Println("TEST: Running parser on well formed input")
 	file, err := os.Open(prefix + "innodb_output.txt")
 	if err != nil {
 		t.Error("Couldn't open test file")
@@ -32,25 +29,34 @@ func TestParseInnodbStats(t *testing.T) {
 	data := make([]byte, x)
 	_, err = file.Read(data)
 	blob := string(data)
-	test1, err := ParseInnodbStats(blob)
-	if err != nil || test1 == nil {
+	test, err := ParseInnodbStats(blob)
+	if err != nil || test == nil {
 		t.Error(err)
 	}
-	expectedKeys := []string{"Page hash", "Dictionary cache", "File system", "Lock system", "Recovery system",
-		"Dictionary memory allocated", "Buffer pool size", "Free buffers", "Database pages", "Old database pages",
-		"Modified db pages", "Pending reads", "Pages made young", "Pages read"}
-	for _, key := range expectedKeys {
-		newKey := strings.ToLower(strings.Replace(key, " ", "_", -1))
-		_, ok := test1.Metrics[newKey]
-		if !ok {
-			t.Error("Expected key: " + key)
+	tests := map[string]string{"page_hash": "139112",
+		"dictionary_cache":    "5771169",
+		"file_system":         "1053936",
+		"pages_read":          "534",
+		"trxes_not_started":   "6",
+		"log_sequence_number": "139401310",
+		"log_flushed_up_to":   "139401310",
+		"log_io_done":         "277124",
+		"modified_age":        "0",
+		"OS_file_reads":       "1597",
+		"avg_bytes_per_read":  "0",
+		"fsyncs_per_s":        "0.89",
+	}
+
+	for key, val := range tests {
+		if test.Metrics[key] != val {
+			t.Error(key + " not parsed correctly. Expected: " + val + ", Got: " + test.Metrics[key])
 		}
 	}
 }
 
-//totally malformed input, should not return an error, but will return an empty result
+//input that totally does not match regular expressions,
+// should not return an error, but will return an empty result
 func TestParseMalformedInput(t *testing.T) {
-	fmt.Println("TEST: Running parser on malformed input")
 	file, err := os.Open(prefix + "innodb_giberish.txt")
 	if err != nil {
 		t.Error("Couldn't open test file")
@@ -72,7 +78,6 @@ func TestParseMalformedInput(t *testing.T) {
 
 //input text has missing fields, but should still parse the remaining file
 func TestParseMissingFields(t *testing.T) {
-	fmt.Println("TEST: Running parser on text with missing fields")
 	testFiles := []string{"innodb_missing1.txt",
 		"innodb_missing2.txt",
 		"innodb_missing3.txt"}
@@ -97,7 +102,6 @@ func TestParseMissingFields(t *testing.T) {
 
 //Playing with the regular expression matching
 func TestParseDifferentRegexps(t *testing.T) {
-	fmt.Println("TEST: Running parser on text with slightly malformed input - test the regexps")
 	testFiles := []string{"innodb_regexp1.txt",
 		"innodb_regexp2.txt",
 		"innodb_regexp3.txt"}
