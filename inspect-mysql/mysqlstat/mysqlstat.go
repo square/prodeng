@@ -195,18 +195,12 @@ func New(m *metrics.MetricContext, Step time.Duration, user, password, config st
 	}
 	s.Metrics = MysqlStatMetricsNew(m, Step)
 
-	s.Collect(0)
+	s.Collect()
 
 	ticker := time.NewTicker(Step)
 	go func() {
-		i := 0
 		for _ = range ticker.C {
-
-			//pass in i to each collection function
-			//  some functions are expensive and so should only
-			//  be made once every few cycles
-			go s.Collect(i)
-			i = (i + 1) % (5) //reset to 0 every 5 cycles
+			go s.Collect()
 		}
 	}()
 	return s, nil
@@ -222,7 +216,7 @@ func MysqlStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MysqlSta
 //launches metrics collectors
 // sql.DB is safe for concurrent use by multiple goroutines
 // so launching each metric collector as its own goroutine is safe
-func (s *MysqlStat) Collect(i int) {
+func (s *MysqlStat) Collect() {
 	go s.getVersion()
 	go s.getSlaveStats()
 	go s.getGlobalStatus()
