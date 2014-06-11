@@ -8,7 +8,7 @@ inspect command line is a utility that gives a brief overview on the databases: 
 inspect gathers the following metrics:
 - Version number
 - Slave Stats
-- Glabal Stats
+- Global Stats
 - Binlog Stats
 - Stacked Query info
 - Session Info
@@ -18,7 +18,7 @@ inspect gathers the following metrics:
 
 *Installation*
 1. Get Go
-2. go get -v -u github.com/square/prodeng/inspect-mysql
+2. `go get -v -u github.com/square/prodeng/inspect-mysql`
 
 *Usage*
 
