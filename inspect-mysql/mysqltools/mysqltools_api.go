@@ -1,9 +1,6 @@
 package mysqltools
 
-//nothing to import
-
 type MysqlDB interface {
-
 	// makes query to database
 	// returns result as a mapping of strings to string arrays
 	// where key is column name and value is the items stored in column
@@ -18,8 +15,6 @@ type MysqlDB interface {
 	QueryMapFirstColumnToRow(query string) (map[string][]string, error)
 
 	// Log Prints in to the logger
-	// input is type interface{} so that
-	// any value type may be printed
 	Log(in interface{})
 
 	// Closes the connection with the database

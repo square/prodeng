@@ -1,10 +1,11 @@
+//Copyright (c) 2014 Square, Inc
+//
+// Testing for mysqltools
+
 package mysqltools
 
 import (
-	"database/sql"
-	"database/sql/driver" //for testing sql databases
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"testing"
@@ -18,47 +19,6 @@ const (
 	prefix     = "/Users/brianip/Documents/test/innodb_tests/"
 	fakeDBName = "foobar"
 )
-
-type fakeDriver struct {
-}
-
-var fdriver driver.Driver = &fakeDriver{}
-
-func initDB(t testing.TB) *sql.DB {
-	sql.Register("test", driver)
-	db, err := sql.Open("test", fakeDBName)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	if _, err := db.Exec("WIPE"); err != nil {
-		t.Fatalf("exec wipe: %v", err)
-	}
-	exec(t, db, "CREATE|people|name=string,age=int32,birthday=string")
-	exec(t, db, "INSERT|people|name=Alice,age=5,birthday=May1", 1)
-	exec(t, db, "INSERT|people|name=Bob,age=6,birthday=May2", 2)
-	exec(t, db, "INSERT|people|name=Charlie,age=7,birthday=May3", 3)
-	exec(t, db, "INSERT|people|name=David,age=8,birthday=May4", 4)
-	return db
-}
-
-func exec(t testing.TB, db *sql.DB, query string, args ...interface{}) {
-	_, err := db.Exec(query, args...)
-	if err != nil {
-		t.Fatalf("Exec of %q: %v", query, err)
-	}
-}
-
-func TestQueryReturnColumnDict(t *testing.T) {
-	testdb := &mysqlDB{
-		db:        initDB(t),
-		dsnString: "foobar",
-		Logger:    log.New(os.Stderr, "TESTING LOG: ", log.Lshortfile),
-	}
-	res, err := testdb.QueryReturnColumnDict("SELECT name, age, birthday FROM people;")
-	fmt.Println(err)
-	fmt.Println(res)
-
-}
 
 //Basic parse. should run correctly
 func TestParseInnodbStats(t *testing.T) {

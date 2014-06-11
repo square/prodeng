@@ -310,9 +310,12 @@ func TestMutexes(t *testing.T) {
 	fmt.Println("PASS")
 }
 
+//Test Parsing of sessions query
 func TestSessions(t *testing.T) {
 	fmt.Println("Testing Sessions")
+	//initialize MysqlStat
 	s := initMysqlStat()
+	//set desired query output
 	testquerycol = map[string]map[string][]string{
 		sessionQuery1: map[string][]string{
 			"max_connections": []string{"100"},
@@ -327,6 +330,7 @@ func TestSessions(t *testing.T) {
 				"statistics", "copying table also"},
 		},
 	}
+	//set expected values
 	expectedValues = map[interface{}]interface{}{
 		s.Metrics.MaxConnections:          float64(100),
 		s.Metrics.CurrentSessions:         float64(10),

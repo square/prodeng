@@ -18,6 +18,7 @@ import (
 	"code.google.com/p/goconf/conf" // used for parsing config files
 )
 
+// sql packages and driver
 import "database/sql"
 import _ "github.com/go-sql-driver/mysql"
 
@@ -157,10 +158,9 @@ func New(user, password, config string) (MysqlDB, error) {
 	dsn := map[string]string{"db": "information_schema"}
 	creds := map[string]string{"root": "/root/.my.cnf", "nrpe": "/etc/my_nrpe.cnf"}
 
-    database := &mysqlDB {
-        Logger : log.New(os.Stderr, "LOG: ", log.Lshortfile),
-    }
-//	database.Logger = log.New(os.Stderr, "LOG: ", log.Lshortfile)
+	database := &mysqlDB{
+		Logger: log.New(os.Stderr, "LOG: ", log.Lshortfile),
+	}
 
 	if user == "" {
 		user = DEFAULT_MYSQL_USER
@@ -199,7 +199,7 @@ func New(user, password, config string) (MysqlDB, error) {
 	if err != nil {
 		return database, err
 	}
-    database.db = db
+	database.db = db
 
 	err = database.db.Ping()
 	if err != nil {
@@ -210,13 +210,14 @@ func New(user, password, config string) (MysqlDB, error) {
 }
 
 func (database *mysqlDB) Log(in interface{}) {
-    database.Logger.Println(in)
+	database.Logger.Println(in)
 }
 
 func (database *mysqlDB) Close() {
 	database.db.Close()
 }
 
+//Parse results from "SHOW ENGINE INNODB STATUS" query
 func ParseInnodbStats(blob string) (*InnodbStats, error) {
 	idb := new(InnodbStats)
 	idb.Metrics = make(map[string]string)

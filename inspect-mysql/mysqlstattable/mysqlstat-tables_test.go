@@ -120,6 +120,8 @@ func TestBasic(t *testing.T) {
 	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
 
+	// define expected values after running collect so that databases and
+	// tables are instantiated
 	expectedValues = map[interface{}]interface{}{
 		s.DBs["db1"].Metrics.SizeBytes:                float64(100),
 		s.DBs["db2"].Metrics.SizeBytes:                float64(200),

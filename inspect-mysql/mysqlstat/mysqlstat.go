@@ -220,6 +220,8 @@ func MysqlStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MysqlSta
 }
 
 //launches metrics collectors
+// sql.DB is safe for concurrent use by multiple goroutines
+// so launching each metric collector as its own goroutine is safe
 func (s *MysqlStat) Collect(i int) {
 	go s.getVersion()
 	go s.getSlaveStats()
