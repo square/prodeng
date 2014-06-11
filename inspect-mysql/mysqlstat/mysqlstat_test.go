@@ -194,7 +194,7 @@ func TestBasic(t *testing.T) {
 		s.Metrics.InnodbBufpoolLRUMutexOSWait: uint64(54321),
 		s.Metrics.InnodbBufpoolZipMutexOSWait: uint64(4321),
 	}
-	s.Collect(0)
+	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
 	err := checkResults()
 	if err != "" {
@@ -221,7 +221,7 @@ func TestVersion(t *testing.T) {
 	}
 	//make sure to sleep for ~1 second before checking results
 	// otherwise no metrics will be collected in time
-	s.Collect(0)
+	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
 	//check results
 	err := checkResults()
@@ -237,7 +237,7 @@ func TestVersion(t *testing.T) {
 	expectedValues = map[interface{}]interface{}{
 		s.Metrics.Version: float64(123456.987),
 	}
-	s.Collect(0)
+	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
 	err = checkResults()
 	if err != "" {
@@ -252,7 +252,7 @@ func TestVersion(t *testing.T) {
 	expectedValues = map[interface{}]interface{}{
 		s.Metrics.Version: float64(0.123456),
 	}
-	s.Collect(0)
+	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
 	err = checkResults()
 	if err != "" {
@@ -281,7 +281,7 @@ func TestMutexes(t *testing.T) {
 	}
 	//make sure to sleep for ~1 second before checking results
 	// otherwise no metrics will be collected in time
-	s.Collect(0)
+	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
 	//check results
 	err := checkResults()
@@ -301,7 +301,7 @@ func TestMutexes(t *testing.T) {
 		s.Metrics.InnodbBufpoolLRUMutexOSWait: uint64(2),
 		s.Metrics.InnodbBufpoolZipMutexOSWait: uint64(3),
 	}
-	s.Collect(0)
+	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
 	err = checkResults()
 	if err != "" {
@@ -344,7 +344,7 @@ func TestSessions(t *testing.T) {
 		s.Metrics.CopyingToTable:          float64(2),
 		s.Metrics.Statistics:              float64(3),
 	}
-	s.Collect(0)
+	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
 	err := checkResults()
 	if err != "" {
@@ -372,7 +372,7 @@ func TestSlave(t *testing.T) {
 		s.Metrics.SlaveSeqFile:             float64(1345),
 		s.Metrics.SlavePosition:            uint64(7),
 	}
-	s.Collect(0)
+	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
 	err := checkResults()
 	if err != "" {
@@ -393,7 +393,7 @@ func TestSlave(t *testing.T) {
 		s.Metrics.SlaveSeqFile:             float64(1345),
 		s.Metrics.SlavePosition:            uint64(7),
 	}
-	s.Collect(0)
+	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
 	err = checkResults()
 	if err != "" {
