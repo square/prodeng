@@ -1,10 +1,10 @@
 package mysqlstattable
 
 import (
-	"fmt"
 	"log"
 	"os"
 	"strconv"
+	"syscall"
 	"testing"
 	"time"
 
@@ -28,6 +28,8 @@ var (
 	// can switch between metrics.Gauge and metrics.Counter
 	// and between float64 and uint64 easily
 	expectedValues = map[interface{}]interface{}{}
+
+	logFile, _ = os.OpenFile("./test.log", os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0644)
 )
 
 //functions that behave like mysqltools but we can make it return whatever
@@ -48,6 +50,7 @@ func (s *testMysqlDB) Close() {
 }
 
 func initMysqlStatTable() *MysqlStatTables {
+	syscall.Dup2(int(logFile.Fd()), 2)
 	s := new(MysqlStatTables)
 	s.db = &testMysqlDB{
 		Logger: log.New(os.Stderr, "TESTING LOG: ", log.Lshortfile),
@@ -88,7 +91,6 @@ func checkResults() string {
 }
 
 func TestBasic(t *testing.T) {
-	fmt.Println("Basic Test")
 
 	s := initMysqlStatTable()
 
@@ -153,11 +155,9 @@ func TestBasic(t *testing.T) {
 	if err != "" {
 		t.Error(err)
 	}
-	fmt.Println("PASS")
 }
 
 func TestDBSizes(t *testing.T) {
-	fmt.Println("Database Sizes Test")
 
 	s := initMysqlStatTable()
 
@@ -192,11 +192,9 @@ func TestDBSizes(t *testing.T) {
 	if err != "" {
 		t.Error(err)
 	}
-	fmt.Println("PASS")
 }
 
 func TestTableSizes(t *testing.T) {
-	fmt.Println("Test Table Sizes")
 
 	s := initMysqlStatTable()
 
@@ -227,11 +225,9 @@ func TestTableSizes(t *testing.T) {
 	if err != "" {
 		t.Error(err)
 	}
-	fmt.Println("PASS")
 }
 
 func TestTableStats(t *testing.T) {
-	fmt.Println("Table Stats Test")
 
 	s := initMysqlStatTable()
 
@@ -269,11 +265,9 @@ func TestTableStats(t *testing.T) {
 	if err != "" {
 		t.Error(err)
 	}
-	fmt.Println("PASS")
 }
 
 func TestNoSizes(t *testing.T) {
-	fmt.Println("No Sizes Test -- should not gather metrics on sizes")
 
 	s := initMysqlStatTable()
 
@@ -308,5 +302,4 @@ func TestNoSizes(t *testing.T) {
 	if ok {
 		t.Error("found database, but should not have")
 	}
-	fmt.Println("PASS")
 }

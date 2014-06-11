@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 
@@ -210,6 +211,10 @@ func New(user, password, config string) (MysqlDB, error) {
 }
 
 func (database *mysqlDB) Log(in interface{}) {
+	_, f, line, ok := runtime.Caller(1)
+	if ok {
+		database.Logger.Println("Log from: " + f + " line: " + strconv.Itoa(line))
+	}
 	database.Logger.Println(in)
 }
 
