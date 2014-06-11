@@ -16,7 +16,7 @@ var (
 )
 
 const (
-	prefix     = "/Users/brianip/Documents/test/innodb_tests/"
+	prefix     = "./testfiles/"
 	fakeDBName = "foobar"
 )
 
