@@ -1,5 +1,5 @@
-inspect-mysql
-=============
+#inspect-mysql
+
 
 inspect-mysql is a collection of libraries for gathering metrics of mysql databases.
 
@@ -16,13 +16,14 @@ inspect gathers the following metrics:
 - Long Run Query info
 - Query Response Times
 
-*Installation*
+##Installation
+
 1. Get Go
 2. `go get -v -u github.com/square/prodeng/inspect-mysql`
 
-*Usage*
+##Usage
 
-*Command Line*
+###Command Line
 
 ./bin/inspect-mysql
 
@@ -37,7 +38,7 @@ Database sizes:
 
 ```
 
-*Server*
+###Server
 
 _inspect-mysql_ can be run in server mode to run continuously and expose all metrics via HTTP JSON api
 
@@ -54,7 +55,7 @@ _inspect-mysql_ can be run in server mode to run continuously and expose all met
 {"type": "counter", "name": "mysqlstat.SortMergePasses", "value": 0, "rate": 0.000000}]
 ```
 
-*Example API Use*
+###Example API Use
 
 
 ```
@@ -80,3 +81,18 @@ fmt.Println(sqlstats.Metrics.Queries.Get())
 // Print the size of table t1 in databse db1
 fmt.Println(sqltablestats.DBs["db1"].Tables["t1"].Metrics.SizeBytes.Get())
 ```
+
+##Testing 
+
+Packages are tested using Go's testing package.
+To test:
+1. cd to the directory containing the .go and _test.go files
+2. Run `go test`. You can also run with the `-v` option for a verbose output. For these tests, many logs are expected so stderr is redirected to a file `test.log` 
+
+Tests for each metric may be added to `mysqlstat_test.go` and `mysqlstat-tables_test.go`. These tests do not connect to a database. Instead, the desired test input is hard coded into each test. Testing for the parser for the Innodb metrics are located in `mysqltools_test.go`. 
+
+
+
+
+
+
