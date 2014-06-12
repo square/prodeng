@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/square/prodeng/inspect-mysql/mysqltools"
@@ -34,16 +35,16 @@ SELECT table_schema AS db, table_name AS tbl,
  WHERE rows_read > 0;`
 )
 
-// Structs:
 // MysqlStatTables - main struct that contains connection to database, metric context, and map to database stats struct
 type MysqlStatTables struct {
-	DBs map[string]*DBStats
-	m   *metrics.MetricContext
-	db  mysqltools.MysqlDB
+	DBs   map[string]*DBStats
+	m     *metrics.MetricContext
+	db    mysqltools.MysqlDB
+	nLock *sync.Mutex
 }
 
-//DBStats - database stats struct
-//  contains metrics for databases and map to tables stats struct
+//database stats struct
+//contains metrics for databases and map to tables stats struct
 type DBStats struct {
 	Tables  map[string]*MysqlStatPerTable
 	Metrics *MysqlStatPerDB
@@ -67,10 +68,13 @@ type MysqlStatPerDB struct {
 func New(m *metrics.MetricContext, Step time.Duration, user, password, config string) (*MysqlStatTables, error) {
 	s := new(MysqlStatTables)
 	s.m = m
+	s.nLock = &sync.Mutex{}
 	// connect to database
 	var err error
 	s.db, err = mysqltools.New(user, password, config)
+	s.nLock.Lock()
 	s.DBs = make(map[string]*DBStats)
+	s.nLock.Unlock()
 	if err != nil { //error in connecting to database
 		return nil, err
 	}
@@ -101,7 +105,9 @@ func newMysqlStatPerTable(m *metrics.MetricContext, dbname, tblname string) *Mys
 	return o
 }
 
-//collects metrics
+//collects metrics.
+// sql.DB is thread safe so launching metrics collectors
+// in their own goroutines is safe
 func (s *MysqlStatTables) Collect() {
 	go s.getDBSizes()
 	go s.getTableSizes()
@@ -118,18 +124,22 @@ func (s *MysqlStatTables) initializeDB(dbname string) *DBStats {
 
 //check if database struct is instantiated, and instantiate if not
 func (s *MysqlStatTables) checkDB(dbname string) {
+	s.nLock.Lock()
 	if _, ok := s.DBs[dbname]; !ok {
 		s.DBs[dbname] = s.initializeDB(dbname)
 	}
+	s.nLock.Unlock()
 	return
 }
 
 //check if table struct is instantiated, and instantiate if not
 func (s *MysqlStatTables) checkTable(dbname, tblname string) {
 	s.checkDB(dbname)
+	s.nLock.Lock()
 	if _, ok := s.DBs[dbname].Tables[tblname]; !ok {
 		s.DBs[dbname].Tables[tblname] = newMysqlStatPerTable(s.m, dbname, tblname)
 	}
+	s.nLock.Unlock()
 	return
 }
 
@@ -160,7 +170,9 @@ func (s *MysqlStatTables) getDBSizes() {
 		size, _ := strconv.ParseInt(string(value[0]), 10, 64)
 		if size > 0 {
 			s.checkDB(dbname)
+			s.nLock.Lock()
 			s.DBs[dbname].Metrics.SizeBytes.Set(float64(size))
+			s.nLock.Unlock()
 		}
 	}
 	return
@@ -200,7 +212,9 @@ func (s *MysqlStatTables) getTableSizes() {
 		}
 		if size > 0 {
 			s.checkTable(dbname, tblname)
+			s.nLock.Lock()
 			s.DBs[dbname].Tables[tblname].SizeBytes.Set(float64(size))
+			s.nLock.Unlock()
 		}
 	}
 	return
@@ -230,22 +244,29 @@ func (s *MysqlStatTables) getTableStatistics() {
 		if rows_read > 0 {
 			s.checkDB(dbname)
 			s.checkTable(dbname, tblname)
+			s.nLock.Lock()
 			s.DBs[dbname].Tables[tblname].RowsRead.Set(uint64(rows_read))
+			s.nLock.Unlock()
 		}
 		if rows_changed > 0 {
 			s.checkDB(dbname)
 			s.checkTable(dbname, tblname)
+			s.nLock.Lock()
 			s.DBs[dbname].Tables[tblname].RowsChanged.Set(uint64(rows_changed))
+			s.nLock.Unlock()
 		}
 		if rows_changed_x_indexes > 0 {
 			s.checkDB(dbname)
 			s.checkTable(dbname, tblname)
+			s.nLock.Lock()
 			s.DBs[dbname].Tables[tblname].RowsChangedXIndexes.Set(uint64(rows_changed_x_indexes))
+			s.nLock.Unlock()
 		}
 	}
 	return
 }
 
+//Closes connection with database
 func (s *MysqlStatTables) Close() {
 	s.db.Close()
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/square/prodeng/metrics"
 )
 
+// Collection of metrics and connection to database
 type MysqlStat struct {
 	Metrics *MysqlStatMetrics //collection of metrics
 	m       *metrics.MetricContext
@@ -181,7 +182,7 @@ const (
 	innodbQuery = "SHOW GLOBAL VARIABLES LIKE 'innodb_log_file_size';"
 )
 
-//initializes mysqlstat
+//initializes mysqlstat.
 // starts off collect
 func New(m *metrics.MetricContext, Step time.Duration, user, password, config string) (*MysqlStat, error) {
 	s := new(MysqlStat)
@@ -213,7 +214,7 @@ func MysqlStatMetricsNew(m *metrics.MetricContext, Step time.Duration) *MysqlSta
 	return c
 }
 
-//launches metrics collectors
+//launches metrics collectors.
 // sql.DB is safe for concurrent use by multiple goroutines
 // so launching each metric collector as its own goroutine is safe
 func (s *MysqlStat) Collect() {
@@ -687,6 +688,7 @@ func (s *MysqlStat) getInnodbStats() {
 	return
 }
 
+//get backups count
 func (s *MysqlStat) getBackups() {
 	out, err := exec.Command("ps", "aux").Output()
 	if err != nil {
@@ -712,14 +714,17 @@ func (s *MysqlStat) getBackups() {
 	return
 }
 
+// Closes database connection
 func (s *MysqlStat) Close() {
 	s.db.Close()
 }
 
+//returns Metrics.Queries
 func (s *MysqlStat) Queries() uint64 {
 	return s.Metrics.Queries.Get()
 }
 
+//returns Metrics.Uptime
 func (s *MysqlStat) Uptime() uint64 {
 	return s.Metrics.Uptime.Get()
 }
