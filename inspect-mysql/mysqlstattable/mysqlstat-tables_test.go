@@ -1,3 +1,21 @@
+//Copyright (c) 2014 Square, Inc
+//
+// Tests the metrics collecting functions for mysqlstat-tables.go.
+// Tests do not connect to a database, dummy functions are
+// used instead and return hard coded input. Testing connections
+// to a database are done in mysqltools_test.go.
+//
+// Each test first sets input data, and uses Collect() to
+// gather metrics rather than calling that metric's get function.
+// This ensures that other functions still work on malformed or missing
+// input, such as what would happen with an incorrect query.
+// Testing the correctness of mysql queries should be done manually.
+//
+// Integration/Acceptance testing is harder and is avoided because
+// creating and populating a fake database with the necessary information
+// may be more trouble than is worth. Manual testing may be required for
+// full acceptance tests.
+
 package mysqlstattable
 
 import (
@@ -31,8 +49,6 @@ var (
 	expectedValues = map[interface{}]interface{}{}
 
 	logFile, _ = os.OpenFile("./test.log", os.O_WRONLY|os.O_CREATE|os.O_SYNC, 0644)
-
-	mu = sync.Mutex{}
 )
 
 //functions that behave like mysqltools but we can make it return whatever
@@ -94,9 +110,12 @@ func checkResults() string {
 	return ""
 }
 
+// TestBasic parsing of all fields.
+// Most metrics are simple parsing strings to ints/floats.
+// More complex string manipulations are further tested in
+// later test functions.
 func TestBasic(t *testing.T) {
 
-	mu.Lock()
 	s := initMysqlStatTable()
 	s.nLock.Lock()
 	testquerycol = map[string]map[string][]string{
@@ -159,14 +178,12 @@ func TestBasic(t *testing.T) {
 	}
 	err := checkResults()
 	s.nLock.Unlock()
-	mu.Unlock()
 	if err != "" {
 		t.Error(err)
 	}
 }
 
 func TestDBSizes(t *testing.T) {
-	mu.Lock()
 
 	s := initMysqlStatTable()
 	s.nLock.Lock()
@@ -199,14 +216,12 @@ func TestDBSizes(t *testing.T) {
 	}
 	err := checkResults()
 	s.nLock.Unlock()
-	mu.Unlock()
 	if err != "" {
 		t.Error(err)
 	}
 }
 
 func TestTableSizes(t *testing.T) {
-	mu.Lock()
 
 	s := initMysqlStatTable()
 	s.nLock.Lock()
@@ -214,6 +229,8 @@ func TestTableSizes(t *testing.T) {
 		innodbMetadataCheck: map[string][]string{
 			"innodb_stats_on_metadata": []string{"0"},
 		},
+		// Test giving information for tables without the schema they
+		// belong in being previously defined
 		tblSizesQuery: map[string][]string{
 			"tbl":            []string{"t1", "t2", "t3", "t1", "t2", "t1", "t1"},
 			"db":             []string{"db1", "db1", "db1", "db2", "db2", "db3", "db4"},
@@ -236,18 +253,18 @@ func TestTableSizes(t *testing.T) {
 	}
 	err := checkResults()
 	s.nLock.Unlock()
-	mu.Unlock()
 	if err != "" {
 		t.Error(err)
 	}
 }
 
 func TestTableStats(t *testing.T) {
-	mu.Lock()
 
 	s := initMysqlStatTable()
 	s.nLock.Lock()
 	testquerycol = map[string]map[string][]string{
+		// Test giving information for tables without the schema they
+		// belong in being previously defined
 		tblStatisticsQuery: map[string][]string{
 			"db":                     []string{"db1", "db1", "db2", "db3", "db5"},
 			"tbl":                    []string{"t1", "t2", "t1", "t2", "t1"},
@@ -280,14 +297,14 @@ func TestTableStats(t *testing.T) {
 	}
 	err := checkResults()
 	s.nLock.Unlock()
-	mu.Unlock()
 	if err != "" {
 		t.Error(err)
 	}
 }
 
+//Because innodb stats on metadata is being collected,
+//metrics collector should not collect these metrics
 func TestNoSizes(t *testing.T) {
-	mu.Lock()
 
 	s := initMysqlStatTable()
 	s.nLock.Lock()
@@ -309,7 +326,6 @@ func TestNoSizes(t *testing.T) {
 	s.nLock.Unlock()
 	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
-	mu.Unlock()
 	s.nLock.Lock()
 	defer s.nLock.Unlock()
 	_, ok := s.DBs["db1"]

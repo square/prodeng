@@ -1,3 +1,22 @@
+//Copyright (c) 2014 Square, Inc
+//
+// Tests the metrics collecting functions for mysqlstat.go.
+// Tests do not connect to a database, dummy functions are
+// used instead and return hard coded input. Testing connections
+// to a database are done in mysqltools_test.go. Testing the
+// "SHOW ENGINE INNODB" parser is also in mysqltools_test.go.
+//
+// Each test first sets input data, and uses Collect() to
+// gather metrics rather than calling that metric's get function.
+// This ensures that other functions still work on malformed or missing
+// input, such as what would happen with an incorrect query.
+// Testing the correctness of mysql queries should be done manually.
+//
+// Integration/Acceptance testing is harder and is avoided because
+// creating and populating a fake database with the necessary information
+// may be more trouble than is worth. Manual testing may be required for
+// full acceptance tests.
+
 package mysqlstat
 
 import (
@@ -36,7 +55,7 @@ var (
 //functions that behave like mysqltools but we can make it return whatever
 func (s *testMysqlDB) QueryReturnColumnDict(query string) (map[string][]string, error) {
 	if query == "SHOW ENGINE INNODB STATUS" {
-		return nil, errors.New(" not checking innodb parser")
+		return nil, errors.New(" not checking innodb parser in this test")
 	}
 	return testquerycol[query], nil
 }
@@ -53,7 +72,7 @@ func (s *testMysqlDB) Close() {
 	return
 }
 
-//initializes a test instance of MysqlStat
+//initializes a test instance of MysqlStat.
 // instance does not connect with a db
 func initMysqlStat() *MysqlStat {
 	syscall.Dup2(int(logFile.Fd()), 2)
@@ -61,10 +80,8 @@ func initMysqlStat() *MysqlStat {
 	s.db = &testMysqlDB{
 		Logger: log.New(os.Stderr, "TESTING LOG: ", log.Lshortfile),
 	}
-
 	s.Metrics = MysqlStatMetricsNew(metrics.NewMetricContext("system"),
 		time.Millisecond*time.Duration(1)*1000)
-
 	return s
 }
 
@@ -96,13 +113,16 @@ func checkResults() string {
 	return ""
 }
 
-// Test basic parsing of all fields
+// TestBasic parsing of all fields.
+// Most metrics are simple parsing strings to ints/floats.
+// More complex string manipulations are further tested in
+// later test functions.
 func TestBasic(t *testing.T) {
 	//intitialize MysqlStat
 	s := initMysqlStat()
+
 	//set desired test output
 	testquerycol = map[string]map[string][]string{
-
 		//getSlaveStats()
 		slaveQuery: map[string][]string{
 			"Seconds_Behind_Master": []string{"8"},
@@ -198,6 +218,8 @@ func TestBasic(t *testing.T) {
 	}
 	s.Collect()
 	time.Sleep(time.Millisecond * 1000 * 1)
+
+	//check Results
 	err := checkResults()
 	if err != "" {
 		t.Error(err)

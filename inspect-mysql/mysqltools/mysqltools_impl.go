@@ -135,20 +135,22 @@ func (database *mysqlDB) QueryMapFirstColumnToRow(query string) (map[string][]st
 
 //makes dsn to open up connection
 //dsn is made up of the format:
-//     [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
+//     [user[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
 func makeDsn(dsn map[string]string) string {
 	var dsnString string
-	user, ok := dsn["user"]
-	if ok {
+	user, userok := dsn["user"]
+	if userok {
 		dsnString = user
 	}
 	password, ok := dsn["password"]
 	if ok {
 		dsnString = dsnString + ":" + password
 	}
-	dsnString = dsnString + "@"
+	if userok {
+		dsnString = dsnString + "@"
+	}
 	dsnString = dsnString + dsn["unix_socket"]
-	dsnString = dsnString + "/" + dsn["db"]
+	dsnString = dsnString + "/" + dsn["dbname"]
 	return dsnString
 }
 
@@ -156,7 +158,7 @@ func makeDsn(dsn map[string]string) string {
 // when an error is encountered, still return database so that the logger may be used
 func New(user, password, config string) (MysqlDB, error) {
 
-	dsn := map[string]string{"db": "information_schema"}
+	dsn := map[string]string{"dbname": "information_schema"}
 	creds := map[string]string{"root": "/root/.my.cnf", "nrpe": "/etc/my_nrpe.cnf"}
 
 	database := &mysqlDB{
@@ -196,12 +198,14 @@ func New(user, password, config string) (MysqlDB, error) {
 	dsn["password"] = strings.Trim(pw, " \"")
 	database.dsnString = makeDsn(dsn)
 
+	//make connection to db
 	db, err := sql.Open("mysql", database.dsnString)
 	if err != nil {
 		return database, err
 	}
 	database.db = db
 
+	//ping db to verify connection
 	err = database.db.Ping()
 	if err != nil {
 		return database, err
