@@ -718,13 +718,3 @@ func (s *MysqlStat) getBackups() {
 func (s *MysqlStat) Close() {
 	s.db.Close()
 }
-
-//returns Metrics.Queries
-func (s *MysqlStat) Queries() uint64 {
-	return s.Metrics.Queries.Get()
-}
-
-//returns Metrics.Uptime
-func (s *MysqlStat) Uptime() uint64 {
-	return s.Metrics.Uptime.Get()
-}

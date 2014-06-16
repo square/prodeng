@@ -56,8 +56,8 @@ func main() {
 		//Print stats here, more stats than printed are actually collected
 		fmt.Println("--------------------------")
 		fmt.Println("Version: " + strconv.FormatFloat(sqlstat.Metrics.Version.Get(), 'f', -1, 64))
-		fmt.Println("Queries made: " + strconv.Itoa(int(sqlstat.Queries())))
-		fmt.Println("Uptime: " + strconv.Itoa(int(sqlstat.Uptime())))
+		fmt.Println("Queries made: " + strconv.Itoa(int(sqlstat.Metrics.Queries.Get())))
+		fmt.Println("Uptime: " + strconv.Itoa(int(sqlstat.Metrics.Uptime.Get())))
 		fmt.Println("Database sizes: ")
 		for dbname, db := range sqlstatTables.DBs {
 			size := db.Metrics.SizeBytes.Get()

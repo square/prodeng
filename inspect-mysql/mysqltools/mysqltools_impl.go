@@ -1,8 +1,7 @@
 // Copyright (c) 2014 Square, Inc
 //
-// Must download driver for mysql use. Run the following command:
-//      go get github.com/go-sql-driver/mysql
-// in order to successfully build/install
+// Tools to connect to and query the mysql database.
+// Also includes parsers for "SHOW ENGINE INNODB" query.
 
 package mysqltools
 
@@ -151,6 +150,7 @@ func makeDsn(dsn map[string]string) string {
 	}
 	dsnString = dsnString + dsn["unix_socket"]
 	dsnString = dsnString + "/" + dsn["dbname"]
+	dsnString = dsnString + "?timeout=30s"
 	return dsnString
 }
 
@@ -210,7 +210,7 @@ func New(user, password, config string) (MysqlDB, error) {
 	if err != nil {
 		return database, err
 	}
-	fmt.Println("connected to " + user + " @ " + dsn["db"])
+	fmt.Println("connected to " + user + " @ " + dsn["dbname"])
 	return database, nil
 }
 
