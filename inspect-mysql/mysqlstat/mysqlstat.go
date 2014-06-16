@@ -100,7 +100,8 @@ type MysqlStatMetrics struct {
 	OSFileReads                   *metrics.Gauge
 	OSFileWrites                  *metrics.Gauge
 	OldDatabasePages              *metrics.Gauge
-	OldestQuery                   *metrics.Gauge
+	OldestQueryS                  *metrics.Gauge
+	OldestTrxS                    *metrics.Gauge
 	OpenTables                    *metrics.Gauge
 	PageHash                      *metrics.Gauge
 	PagesFlushedUpTo              *metrics.Gauge
@@ -150,6 +151,9 @@ const (
  SELECT time FROM information_schema.processlist
   WHERE command NOT IN ('Sleep','Connect','Binlog Dump')
   ORDER BY time DESC LIMIT 1;`
+	oldestTrx = `
+  SELECT UNIX_TIMESTAMP(NOW()) - UNIX_TIMESTAMP(MIN(trx_started)) AS time 
+    FROM information_schema.innodb_trx;`
 	responseTimeQuery = "SELECT time, count FROM INFORMATION_SCHEMA.QUERY_RESPONSE_TIME;"
 	binlogQuery       = "SHOW MASTER LOGS;"
 	globalStatsQuery  = "SHOW GLOBAL STATUS;"
@@ -228,7 +232,8 @@ func (s *MysqlStat) Collect() {
 	go s.getNumLongRunQueries()
 	go s.getQueryResponseTime()
 	go s.getBackups()
-	go s.getOldest()
+	go s.getOldestQuery()
+	go s.getOldestTrx()
 	go s.getBinlogFiles()
 	go s.getInnodbBufferpoolMutexWaits()
 }
@@ -360,7 +365,7 @@ func (s *MysqlStat) getInnodbBufferpoolMutexWaits() {
 }
 
 //get time of oldest query in seconds
-func (s *MysqlStat) getOldest() {
+func (s *MysqlStat) getOldestQuery() {
 	res, err := s.db.QueryReturnColumnDict(oldestQuery)
 	if err != nil {
 		s.db.Log(err)
@@ -373,8 +378,22 @@ func (s *MysqlStat) getOldest() {
 			s.db.Log(err)
 		}
 	}
-	s.Metrics.OldestQuery.Set(float64(t))
+	s.Metrics.OldestQueryS.Set(float64(t))
 	return
+}
+
+func (s *MysqlStat) getOldestTrx() {
+	res, err := s.db.QueryReturnColumnDict(oldestTrx)
+	if err != nil {
+		s.db.Log(err)
+		return
+	}
+	t := int64(0)
+	if time, ok := res["time"]; ok && len(time) > 0 {
+		t, _ = strconv.ParseInt(time[0], 10, 64)
+		//only error expecting is when "NULL" is encountered
+	}
+	s.Metrics.OldestTrxS.Set(float64(t))
 }
 
 //calculate query response times
