@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -125,9 +126,8 @@ func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) 
 	f := true
 	if err != nil {
 		return
-		//TODO: gracefully handle error
 	}
-	if n, ok := r.Form["allowNaN"]; ok && n[0] == "false" {
+	if n, ok := r.Form["allowNaN"]; ok && strings.ToLower(n[0]) == "false" {
 		f = false
 	}
 
