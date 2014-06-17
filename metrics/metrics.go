@@ -5,6 +5,7 @@ package metrics
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 )
@@ -114,29 +115,50 @@ func (m *MetricContext) Print() {
 }
 
 // HttpJsonHandler exposes all metrics via json
+// if f is set to true, filter out NaN metrics
 // TODO: too long, too ugly - fix
 func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte("[\n"))
+
+	err := r.ParseForm()
+	f := true
+	if err != nil {
+		return
+		//TODO: gracefully handle error
+	}
+	if n, ok := r.Form["allowNaN"]; ok && n[0] == "false" {
+		f = false
+	}
 
 	appendcomma := false
 	for name, g := range m.Gauges {
 		if appendcomma {
 			w.Write([]byte(",\n"))
 		}
-		w.Write([]byte(fmt.Sprintf(`{"type": "gauge", "name": "%s", "value": %f}`,
-			name, g.Get())))
-		appendcomma = true
+		val := g.Get()
+		if f || !math.IsNaN(val) {
+			w.Write([]byte(fmt.Sprintf(`{"type": "gauge", "name": "%s", "value": %f}`,
+				name, val)))
+			appendcomma = true
+		} else {
+			appendcomma = false
+		}
 	}
 
 	for name, c := range m.Counters {
 		if appendcomma {
 			w.Write([]byte(",\n"))
 		}
-		w.Write([]byte(fmt.Sprintf(
-			`{"type": "counter", "name": "%s", "value": %d, "rate": %f}`,
-			name, c.Get(), c.ComputeRate())))
-		appendcomma = true
+		rate := c.ComputeRate()
+		if f || !math.IsNaN(rate) {
+			w.Write([]byte(fmt.Sprintf(
+				`{"type": "counter", "name": "%s", "value": %d, "rate": %f}`,
+				name, c.Get(), rate)))
+			appendcomma = true
+		} else {
+			appendcomma = false
+		}
 	}
 
 	for name, s := range m.StatsTimers {
