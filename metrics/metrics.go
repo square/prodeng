@@ -116,14 +116,13 @@ func (m *MetricContext) Print() {
 }
 
 // HttpJsonHandler exposes all metrics via json
-// if f is set to true, filter out NaN metrics
 // TODO: too long, too ugly - fix
 func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte("[\n"))
 
 	err := r.ParseForm()
-	f := true
+	f := true // if f is set to false, filter out NaN metric values
 	if err != nil {
 		return
 	}
