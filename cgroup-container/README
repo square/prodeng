@@ -1,0 +1,6 @@
+Tests require you to have linux host running CentOS6 and need
+root
+
+Run tests on a centos VM
+
+sudo ruby ./t/*.rb

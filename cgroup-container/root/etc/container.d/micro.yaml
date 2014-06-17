@@ -1,0 +1,10 @@
+# allow upto 1 logical cpus  and 128MB RAM
+cpu:
+ - cpu.cfs_period_us: 1000000
+ - cpu.cfs_quota_us:  1000000
+memory:
+# WARNING: do not remove. reset memsw limit
+ - memory.memsw.limit_in_bytes: -1
+ - memory.soft_limit_in_bytes: 134217728
+ - memory.limit_in_bytes: 134217728
+ - memory.memsw.limit_in_bytes: 134217728

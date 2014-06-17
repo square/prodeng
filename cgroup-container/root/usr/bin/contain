@@ -1,0 +1,94 @@
+#!/usr/bin/ruby20
+
+# Copyright (c) 2014 Square, Inc
+
+# simple interface to basic container implementation.
+# It could be eventually be enhanced to implement
+# full containers (with filesystem/network stack,
+# something like lxc or lxc)
+
+require 'rubygems'
+require 'optparse'
+require 'pp'
+require 'yaml'
+require 'fileutils'
+
+container_def_dir="/etc/container.d"
+cgroup_root="/cgroup"
+
+options = {}
+optparse = OptionParser.new do |opts|
+  opts.banner = "Usage: contain -s size -a app command_to_be_executed"
+  opts.on('-s', '--size size', 'size') do |arg|
+      options[:size] = arg
+  end
+  opts.on('-a', '--app application', 'application name') do |arg|
+      options[:app] = arg
+  end
+  opts.on('-d', '--dir dir for container defs', 'directory name') do |arg|
+      container_def_dir = arg
+  end
+  opts.on('-n', '--dry-run', 'dry run') do |arg|
+      options[:dry_run] = arg
+  end
+  opts.on('-v', '--verbose', 'verbose') do |arg|
+      options[:verbose] = arg
+  end
+end
+optparse.parse!
+
+if(!options[:size] || !options[:app])
+  puts optparse.help
+  exit 1
+end
+
+size_def=container_def_dir + "/" + options[:size] + ".yaml"
+if(!File.exists?(size_def))
+  raise "#{size_def} does not exist"
+end
+
+cgroup_definitions = YAML.load_file(size_def)
+
+# create a cgroup heirarchy for the application name
+# if cgroup already exists, verify that the settings
+# match. if not, adjust them to new settings.
+cgroup_definitions.keys.each { |subsystem|
+  FileUtils.mkdir_p("/cgroup/#{subsystem}/#{options[:app]}")
+
+  cgroup_definitions[subsystem].each { |p|
+   name = p.keys.first
+   value = p[name]   
+
+   dest = "/cgroup/#{subsystem}/#{options[:app]}/#{name}"
+   cur_val = File.open(dest).read.chomp
+   if(cur_val.to_s != value.to_s)
+       if(options[:verbose])
+         puts "Setting #{dest} from #{cur_val} -> #{value}"
+       end
+       File.open(dest,"w") { |fd|
+         if(!options[:dry_run])
+          fd.syswrite(value)
+         end
+       }
+   else
+    if(options[:verbose])
+      puts "#{dest} at #{cur_val}"
+    end
+   end
+  }
+}
+
+# construct a cgexec command
+# this could be easily replaced by writing $$ to
+# task list. tbd.
+cmd =  "/bin/cgexec"
+args=[]
+cgroup_definitions.keys.each { |subsystem|
+  args.push("-g","#{subsystem}:#{options[:app]}")
+}
+args.push(*ARGV)
+if(options[:dry_run])
+  puts "Dry run: executing #{cmd} #{args.join(' ')}"
+else
+  exec [cmd,cmd], *args
+end
