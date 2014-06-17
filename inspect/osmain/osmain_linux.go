@@ -44,6 +44,21 @@ func PrintOsDependent(s *LinuxStats, batchmode bool) {
 
 	var problems []string
 
+	fmt.Println("---")
+	procs_by_usage := s.procs.ByIOUsage()
+	fmt.Println("Top processes by IO usage:")
+	n := 5
+	if len(procs_by_usage) < n {
+		n = len(procs_by_usage)
+	}
+
+	for i := 0; i < n; i++ {
+		fmt.Printf("io: %s/s command: %s user: %s pid: %v\n",
+			misc.ByteSize(procs_by_usage[i].IOUsage()),
+			procs_by_usage[i].Comm(),
+			procs_by_usage[i].User(),
+			procs_by_usage[i].Pid())
+	}
 	type cg_stat struct {
 		cpu *cpustat.PerCgroupStat
 		mem *memstat.PerCgroupStat

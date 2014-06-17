@@ -1,0 +1,8 @@
+# unrestricted
+cpu:
+ - cpu.cfs_quota_us: -1
+memory:
+# WARNING: do not remove
+ - memory.memsw.limit_in_bytes: -1
+ - memory.soft_limit_in_bytes: -1
+ - memory.limit_in_bytes: -1

@@ -1,0 +1,10 @@
+# allow up to 16 cpu threads and 16G RAM
+cpu:
+ - cpu.cfs_period_us: 1000000
+ - cpu.cfs_quota_us: 16000000
+memory:
+# reset memsw limit. WARNING: do not remove
+ - memory.memsw.limit_in_bytes: -1
+ - memory.soft_limit_in_bytes: 17179869184
+ - memory.limit_in_bytes: 21474836480
+ - memory.memsw.limit_in_bytes: 21474836480
