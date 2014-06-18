@@ -6,6 +6,9 @@ import "testing"
 import "time"
 import "math"
 import "sync"
+import "strings"
+import "net/http"
+import "net/http/httptest"
 
 // BUG: This test will most likely fail on a highly loaded
 // system
@@ -95,5 +98,43 @@ func TestStatsTimer(t *testing.T) {
 	pctile, err = s.Percentile(75)
 	if math.Abs(pctile-760) > 5 || err != nil {
 		t.Errorf("Percentile expected: 750 got: %v", pctile)
+	}
+}
+
+//Tests that request does not filter out NaN values by default
+func TestJsonHandler1(t *testing.T) {
+	m := NewMetricContext("test")
+	g1 := NewGauge() //g1 should be NaN
+	m.Register(g1, "testGauge1")
+	g2 := NewGauge()
+	m.Register(g2, "testGauge2")
+	g2.Set(float64(42)) // g2 is not NaN
+	req, err := http.NewRequest("GET", "http://localhost:12345/v1/api/metrics.json", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := httptest.NewRecorder()
+	m.HttpJsonHandler(response, req)
+	if !strings.Contains(response.Body.String(), "NaN") {
+		t.Errorf("Expected a NaN value in response, but got: " + response.Body.String())
+	}
+}
+
+//Tests that request filters out NaN when ?allowNaN=false is set
+func TestJsonHandler2(t *testing.T) {
+	m := NewMetricContext("test")
+	g1 := NewGauge() //g1 should be NaN
+	m.Register(g1, "testGauge1")
+	g2 := NewGauge()
+	m.Register(g2, "testGauge2")
+	g2.Set(float64(42)) // g2 is not NaN
+	req, err := http.NewRequest("GET", "http://localhost:12345/v1/api/metrics.json?allowNaN=false", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response := httptest.NewRecorder()
+	m.HttpJsonHandler(response, req)
+	if strings.Contains(response.Body.String(), "NaN") {
+		t.Errorf("Did not expect a NaN value in response, but got: " + response.Body.String())
 	}
 }

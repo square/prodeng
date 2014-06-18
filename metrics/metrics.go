@@ -122,12 +122,12 @@ func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) 
 	w.Write([]byte("[\n"))
 
 	err := r.ParseForm()
-	f := true // if f is set to false, filter out NaN metric values
+	allowNaN := true // if allowNaN is set to false, filter out NaN metric values
 	if err != nil {
 		return
 	}
 	if n, ok := r.Form["allowNaN"]; ok && strings.ToLower(n[0]) == "false" {
-		f = false
+		allowNaN = false
 	}
 
 	appendcomma := false
@@ -136,7 +136,7 @@ func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) 
 			w.Write([]byte(",\n"))
 		}
 		val := g.Get()
-		if f || !math.IsNaN(val) {
+		if allowNaN || !math.IsNaN(val) {
 			w.Write([]byte(fmt.Sprintf(`{"type": "gauge", "name": "%s", "value": %f}`,
 				name, val)))
 			appendcomma = true
@@ -150,7 +150,7 @@ func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) 
 			w.Write([]byte(",\n"))
 		}
 		rate := c.ComputeRate()
-		if f || !math.IsNaN(rate) {
+		if allowNaN || !math.IsNaN(rate) {
 			w.Write([]byte(fmt.Sprintf(
 				`{"type": "counter", "name": "%s", "value": %d, "rate": %f}`,
 				name, c.Get(), rate)))
