@@ -45,10 +45,10 @@ go func() {
 	http.ListenAndServe("localhost:12345", nil)
 }
 
-// Receive metrics via http json
+// Get metrics via http json
 resp, err := http.Get("http://localhost:12345/metrics.json")
 
-// Receive metrics via http json and filter out metrics with NaN values
+// Get metrics via http json and filter out metrics with NaN values
 resp, err := http.Get("http://localhost:12345/metrics.json?allowNaN=false")
 
 ```
