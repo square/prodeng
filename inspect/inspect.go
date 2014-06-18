@@ -6,6 +6,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"net/http"
+	"runtime"
+	"runtime/debug"
+	"time"
+
 	"github.com/mgutz/ansi"
 	"github.com/square/prodeng/inspect/cpustat"
 	"github.com/square/prodeng/inspect/memstat"
@@ -13,11 +19,6 @@ import (
 	"github.com/square/prodeng/inspect/osmain"
 	"github.com/square/prodeng/inspect/pidstat"
 	"github.com/square/prodeng/metrics"
-	"log"
-	"net/http"
-	"runtime"
-	"runtime/debug"
-	"time"
 )
 
 const DISPLAY_PID_COUNT = 5
@@ -92,7 +93,7 @@ func main() {
 	// run http server
 	if servermode {
 		go func() {
-			http.HandleFunc("/metrics.json", m.HttpJsonHandler)
+			http.HandleFunc("/api/v1/metrics.json", m.HttpJsonHandler)
 			log.Fatal(http.ListenAndServe(address, nil))
 		}()
 	}
