@@ -109,7 +109,7 @@ func TestJsonHandler1(t *testing.T) {
 	g2 := NewGauge()
 	m.Register(g2, "testGauge2")
 	g2.Set(float64(42)) // g2 is not NaN
-	req, err := http.NewRequest("GET", "http://localhost:12345/v1/api/metrics.json", nil)
+	req, err := http.NewRequest("GET", "metrics.json", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +128,7 @@ func TestJsonHandler2(t *testing.T) {
 	g2 := NewGauge()
 	m.Register(g2, "testGauge2")
 	g2.Set(float64(42)) // g2 is not NaN
-	req, err := http.NewRequest("GET", "http://localhost:12345/v1/api/metrics.json?allowNaN=false", nil)
+	req, err := http.NewRequest("GET", "metrics.json?allowNaN=false", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
