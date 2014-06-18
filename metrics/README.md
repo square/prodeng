@@ -38,6 +38,7 @@ if err == nil {
 	fmt.Println("Percentile latency for 75 pctile: ", pctile_75th)
 }
 
+
 // Launch a goroutine to serve metrics via http json
 go func() {
 	http.HandleFunc("/metrics.json", m.HttpJsonHandler)
@@ -49,4 +50,5 @@ resp, err := http.Get("http://localhost:12345/metrics.json")
 
 // Get metrics via http json and filter out metrics with NaN values
 resp, err := http.Get("http://localhost:12345/metrics.json?allowNaN=false")
+
 ```
