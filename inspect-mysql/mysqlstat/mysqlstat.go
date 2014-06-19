@@ -41,6 +41,7 @@ type MysqlStatMetrics struct {
 	BufferPoolSize                *metrics.Gauge
 	BusySessionPct                *metrics.Gauge
 	BackupsRunning                *metrics.Gauge
+	BlockingQueryS                *metrics.Gauge
 	CacheHitPct                   *metrics.Gauge
 	ComAlterTable                 *metrics.Counter
 	ComBegin                      *metrics.Counter
@@ -124,6 +125,7 @@ type MysqlStatMetrics struct {
 	TotalMemByReadViews           *metrics.Gauge
 	TransactionID                 *metrics.Gauge
 	UnauthenticatedSessions       *metrics.Gauge
+	UnsecureUsers                 *metrics.Gauge
 	Uptime                        *metrics.Counter
 	UptimeSinceFlushStatus        *metrics.Counter
 	Version                       *metrics.Gauge
@@ -183,7 +185,39 @@ const (
            processlist.*
       FROM information_schema.processlist
      ORDER BY 1, time DESC;`
-	innodbQuery = "SHOW GLOBAL VARIABLES LIKE 'innodb_log_file_size';"
+	innodbQuery   = "SHOW GLOBAL VARIABLES LIKE 'innodb_log_file_size';"
+	securityQuery = "SELECT user FROM mysql.user WHERE password = '' AND ssl_type = '';"
+	blockingQuery = `
+SELECT 
+       UNIX_TIMESTAMP() - UNIX_TIMESTAMP(blocking_trx.trx_started) 
+         AS blocker_age, 
+       blocking_sess.command AS blocker_cmd,
+       blocking_sess.db AS blocker_db, 
+       SUBSTR(blocking_trx.trx_query, 1, 80) AS blocker_query_truncated,
+       blocking_sess.user AS blocker_user, 
+       blocking_sess.host AS blocker_host, 
+       UNIX_TIMESTAMP() - UNIX_TIMESTAMP(waiting_trx.trx_started) 
+         AS waiter_age, 
+       waiting_sess.command AS waiter_cmd,
+       SUBSTR(waiting_trx.trx_query, 1, 80) AS waiter_query_truncated,
+       (SELECT COUNT(DISTINCT requesting_trx_id) 
+          FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS 
+         WHERE blocking_trx_id = blocking_trx.trx_id) AS other_waiters_count
+  FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS  AS w
+ INNER JOIN INFORMATION_SCHEMA.INNODB_TRX    AS blocking_trx
+         ON  w.blocking_trx_id = blocking_trx.trx_id
+ INNER JOIN INFORMATION_SCHEMA.INNODB_TRX    AS waiting_trx
+         ON  w.requesting_trx_id = waiting_trx.trx_id
+  LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST   AS waiting_sess
+         ON  waiting_trx.trx_mysql_thread_id = waiting_sess.id
+  LEFT JOIN INFORMATION_SCHEMA.PROCESSLIST   AS blocking_sess
+         ON  blocking_trx.trx_mysql_thread_id = blocking_sess.id
+ ORDER BY 1 DESC 
+ LIMIT 1;`
+	slaveBackupQuery = `
+SELECT COUNT(*) 
+  FROM information_schema.processlist 
+ WHERE user LIKE '%backup%';`
 )
 
 //initializes mysqlstat.
@@ -236,11 +270,19 @@ func (s *MysqlStat) Collect() {
 	go s.getOldestTrx()
 	go s.getBinlogFiles()
 	go s.getInnodbBufferpoolMutexWaits()
+	go s.getSecurity()
+	go s.getBlockingQuerys()
 }
 
 // get_slave_stats gets slave statistics
 func (s *MysqlStat) getSlaveStats() {
-	res, err := s.db.QueryReturnColumnDict(slaveQuery)
+	res, err := s.db.QueryReturnColumnDict(slaveBackupQuery)
+	if err != nil {
+		s.db.Log(err)
+	} else if len(res) > 0 {
+		s.Metrics.SlaveSecondsBehindMaster.Set(float64(-1))
+	}
+	res, err = s.db.QueryReturnColumnDict(slaveQuery)
 	if err != nil {
 		s.db.Log(err)
 		return
@@ -731,6 +773,29 @@ func (s *MysqlStat) getBackups() {
 	}
 	s.Metrics.BackupsRunning.Set(float64(backupProcs))
 	return
+}
+
+//get count unsecure users
+func (s *MysqlStat) getSecurity() {
+	res, err := s.db.QueryReturnColumnDict(securityQuery)
+	if err != nil {
+		s.db.Log(err)
+		return
+	}
+	s.Metrics.UnsecureUsers.Set(float64(len(res["users"])))
+}
+
+func (s *MysqlStat) getBlockingQuerys() {
+	res, err := s.db.QueryReturnColumnDict(blockingQuery)
+	if err != nil {
+		s.db.Log(err)
+		return
+	}
+	if len(res["blocker_age"]) == 0 {
+		return
+	}
+	age, _ := strconv.ParseFloat(res["blocker_age"][0], 64)
+	s.Metrics.BlockingQueryS.Set(age)
 }
 
 // Closes database connection
