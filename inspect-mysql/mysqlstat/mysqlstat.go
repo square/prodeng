@@ -57,7 +57,6 @@ type MysqlStatMetrics struct {
 	ComSelect                     *metrics.Counter
 	ComUpdate                     *metrics.Counter
 	ComUpdateMulti                *metrics.Counter
-	CopyingToTable                *metrics.Gauge
 	CreatedTmpDiskTables          *metrics.Counter
 	CreatedTmpFiles               *metrics.Counter
 	CreatedTmpTables              *metrics.Counter
@@ -69,7 +68,6 @@ type MysqlStatMetrics struct {
 	FileSystem                    *metrics.Gauge
 	FreeBuffers                   *metrics.Gauge
 	FsyncsPerSec                  *metrics.Gauge
-	GlobalReadLocks               *metrics.Gauge
 	IdenticalQueriesMaxAge        *metrics.Gauge
 	IdenticalQueriesStacked       *metrics.Gauge
 	InnodbBufpoolLRUMutexOSWait   *metrics.Counter
@@ -112,12 +110,14 @@ type MysqlStatMetrics struct {
 	Queries                       *metrics.Counter
 	ReadsPerSec                   *metrics.Gauge
 	RecoverySystem                *metrics.Gauge
+	SessionsCopyingToTable        *metrics.Gauge
+	SessionGlobalReadLocks        *metrics.Gauge
+	SessionsStatistics            *metrics.Gauge
+	SessionTablesLocks            *metrics.Gauge
 	SlavePosition                 *metrics.Counter
 	SlaveSecondsBehindMaster      *metrics.Gauge
 	SlaveSeqFile                  *metrics.Gauge
 	SortMergePasses               *metrics.Counter
-	Statistics                    *metrics.Gauge
-	TablesLocks                   *metrics.Gauge
 	ThreadsConnected              *metrics.Gauge
 	ThreadsRunning                *metrics.Gauge
 	TotalMem                      *metrics.Gauge
@@ -606,10 +606,10 @@ func (s *MysqlStat) getSessions() {
 	s.Metrics.BusySessionPct.Set((active / float64(current_total)) * float64(100))
 	s.Metrics.UnauthenticatedSessions.Set(float64(unauthenticated))
 	s.Metrics.LockedSessions.Set(float64(locked))
-	s.Metrics.TablesLocks.Set(float64(table_lock_wait))
-	s.Metrics.GlobalReadLocks.Set(float64(global_read_lock_wait))
-	s.Metrics.CopyingToTable.Set(float64(copy_to_table))
-	s.Metrics.Statistics.Set(float64(statistics))
+	s.Metrics.SessionTablesLocks.Set(float64(table_lock_wait))
+	s.Metrics.SessionGlobalReadLocks.Set(float64(global_read_lock_wait))
+	s.Metrics.SessionsCopyingToTable.Set(float64(copy_to_table))
+	s.Metrics.SessionsStatistics.Set(float64(statistics))
 
 	return
 }
