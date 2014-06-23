@@ -8,11 +8,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/square/prodeng/metric_check/checker"
+	"github.com/square/prodeng/metrics/check"
+	"github.com/square/prodeng/metrics/check/formats"
 )
 
 var (
-	testconfigurationfile = "/Users/brianip/Development/go/src/github.com/square/prodeng/metric_check/test.config"
+	testconfigurationfile = "./test.config"
 )
 
 // basic checker
@@ -31,7 +32,7 @@ func main() {
 
 	fmt.Println("starting metrics checker on: ", hostport)
 
-	hc, err := checker.New(hostport, configFile)
+	hc, err := check.New(hostport, configFile)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -40,6 +41,6 @@ func main() {
 	ticker := time.NewTicker(step)
 	for _ = range ticker.C {
 		hc.CheckMetrics()
-		hc.OutputWarnings()
+		hc.OutputWarnings(formats.Basic)
 	}
 }

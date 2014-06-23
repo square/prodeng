@@ -1,4 +1,4 @@
-package checker
+package check
 
 import (
 	"fmt"
@@ -121,26 +121,26 @@ func TestReplaceNames3(t *testing.T) {
 	}
 }
 
-//tests correctly checks metrics against thresholds correctly
+//tests correctly.checks metrics against thresholds correctly
 func TestCheckMetrics1(t *testing.T) {
 	hc := initChecker(t)
 	initMetricsJson()
 	hc.getMetrics()
 	m := metricThresholds{
-		checks: map[string]string{
+	checks: map[string]string{
 			"1": "testGauge2.Value > 199",
 			"2": "testGauge2.Value == 200 ",
 			"3": "testGauge2.Value <= 205",
 		},
 	}
 	result := hc.checkMetric(m)
-	if result.checks["1"] != true {
+	if result.Checks["1"] != true {
 		t.Errorf("Did not make check 1 correctly")
 	}
-	if result.checks["2"] != true {
+	if result.Checks["2"] != true {
 		t.Errorf("Did not make check 2 correctly")
 	}
-	if result.checks["3"] != true {
+	if result.Checks["3"] != true {
 		t.Errorf("Did not make check 3 correctly")
 	}
 }
@@ -150,20 +150,20 @@ func TestCheckMetrics2(t *testing.T) {
 	initMetricsJson()
 	hc.getMetrics()
 	m := metricThresholds{
-		checks: map[string]string{
+	checks: map[string]string{
 			"1": "testGauge2.Value < 199",
 			"2": "testGauge2.Value != 200 ",
 			"3": "testGauge2.Value >= 205",
 		},
 	}
 	result := hc.checkMetric(m)
-	if result.checks["1"] != false {
+	if result.Checks["1"] != false {
 		t.Errorf("Did not make check 1 correctly")
 	}
-	if result.checks["2"] != false {
+	if result.Checks["2"] != false {
 		t.Errorf("Did not make check 2 correctly")
 	}
-	if result.checks["3"] != false {
+	if result.Checks["3"] != false {
 		t.Errorf("Did not make check 3 correctly")
 	}
 }
@@ -173,20 +173,20 @@ func TestCheckMetrics3(t *testing.T) {
 	initMetricsJson()
 	hc.getMetrics()
 	m := metricThresholds{
-		checks: map[string]string{
+	checks: map[string]string{
 			"1": "testGauge2.Value < testGauge3.Value",
 			"2": "testGauge2.Value == testGauge4.Value ",
 			"3": "testGauge4.Value >= testGauge3.Value",
 		},
 	}
 	result := hc.checkMetric(m)
-	if result.checks["1"] != true {
+	if result.Checks["1"] != true {
 		t.Errorf("Did not make check 1 correctly")
 	}
-	if result.checks["2"] != false {
+	if result.Checks["2"] != false {
 		t.Errorf("Did not make check 2 correctly")
 	}
-	if result.checks["3"] != true {
+	if result.Checks["3"] != true {
 		t.Errorf("Did not make check 3 correctly")
 	}
 }

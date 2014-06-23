@@ -1,10 +1,10 @@
 //Copyright (c) 2014 Square, Inc
 
-package checker
+package check
 
 type Checker interface {
 	//Returns Warnings specified in config file; e.g. to nagios, commandline
-	OutputWarnings() error
+	OutputWarnings(func(Checker) error) error
 
 	//Check the metrics against their thresholds
 	CheckMetrics() error
@@ -12,5 +12,4 @@ type Checker interface {
 	//Group the warnings by their levels, i.e. CRIT, WARN, OK
 	GetWarnings() map[string]metricResults
 
-	OutputNagiosFormat() []string
 }
