@@ -2,6 +2,7 @@ package formats
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -22,13 +23,13 @@ type nagSender struct {
 }
 
 //Nagios statement formatted as: host service state_code message
-func Nagios(hc check.Checker, configFile string) error {
-	ns := getNagiosInfo(configFile)
+func Nagios(hc check.Checker, configFile ...string) error {
+	ns := getNagiosInfo(configFile[0])
 	res := []string{}
 	critical := []string{}
 	warning := []string{}
 	ok := []string{}
-	for _, result := range hc.GetWarnings() {
+	for sectionName, result := range hc.GetWarnings() {
 		crit := false
 		warn := false
 		for checkName, res := range result.Checks {
@@ -39,11 +40,11 @@ func Nagios(hc check.Checker, configFile string) error {
 			}
 		}
 		if crit {
-			critical = append(critical, result.Message)
+			critical = append(critical, sectionName) //result.Message)
 		} else if warn {
-			warning = append(warning, result.Message)
+			warning = append(warning, sectionName) //result.Message)
 		} else {
-			ok = append(ok, result.Message)
+			ok = append(ok, sectionName) //result.Message)
 		}
 	}
 	messages := map[string][]string{"CRIT": critical, "WARN": warning, "OK": ok}
@@ -52,6 +53,9 @@ func Nagios(hc check.Checker, configFile string) error {
 			continue
 		}
 		res = append(res, fmt.Sprintf("%s\t%s\t%d\t%s\n", ns.hostname, ns.serviceType, nagLevels[level], strings.Join(msgs, ", ")))
+	}
+	for _, m := range res {
+		fmt.Println(m)
 	}
 	return nil
 }
@@ -80,6 +84,7 @@ func getNagiosInfo(configFile string) nagSender {
 	if !c.HasSection("nagios") || err != nil {
 		return *ns
 	}
+	ns.hostname, _ = os.Hostname()
 	ns.server, _ = c.GetString("nagios", "server")
 	ns.NSCA_BINARY_PATH, _ = c.GetString("nagios", "nsca-binary-path")
 	ns.NSCA_CONFIG_PATH, _ = c.GetString("nagios", "nsca-config-path")

@@ -127,7 +127,7 @@ func TestCheckMetrics1(t *testing.T) {
 	initMetricsJson()
 	hc.getMetrics()
 	m := metricThresholds{
-	checks: map[string]string{
+		checks: map[string]string{
 			"1": "testGauge2.Value > 199",
 			"2": "testGauge2.Value == 200 ",
 			"3": "testGauge2.Value <= 205",
@@ -150,7 +150,7 @@ func TestCheckMetrics2(t *testing.T) {
 	initMetricsJson()
 	hc.getMetrics()
 	m := metricThresholds{
-	checks: map[string]string{
+		checks: map[string]string{
 			"1": "testGauge2.Value < 199",
 			"2": "testGauge2.Value != 200 ",
 			"3": "testGauge2.Value >= 205",
@@ -173,7 +173,7 @@ func TestCheckMetrics3(t *testing.T) {
 	initMetricsJson()
 	hc.getMetrics()
 	m := metricThresholds{
-	checks: map[string]string{
+		checks: map[string]string{
 			"1": "testGauge2.Value < testGauge3.Value",
 			"2": "testGauge2.Value == testGauge4.Value ",
 			"3": "testGauge4.Value >= testGauge3.Value",

@@ -41,6 +41,6 @@ func main() {
 	ticker := time.NewTicker(step)
 	for _ = range ticker.C {
 		hc.CheckMetrics()
-		hc.OutputWarnings(formats.Basic)
+		hc.OutputWarnings(formats.Nagios, "./test_nagios.config")
 	}
 }

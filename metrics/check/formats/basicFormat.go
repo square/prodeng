@@ -7,7 +7,7 @@ import (
 	"github.com/square/prodeng/metrics/check"
 )
 
-func Basic(hc check.Checker) error {
+func Basic(hc check.Checker, s ...string) error {
 	for metric, result := range hc.GetWarnings() {
 		fmt.Println(metric + ": " + result.Message)
 		for checkName, val := range result.Checks {
