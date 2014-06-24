@@ -78,6 +78,7 @@ func SendNagiosPassive(messages []string, configFile string) error {
 }
 
 //grabs nagios info from config file
+//TODO: can either grab this info from config file or give as input to send function
 func getNagiosInfo(configFile string) nagSender {
 	ns := &nagSender{}
 	c, err := conf.ReadConfigFile(configFile)

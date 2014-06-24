@@ -4,21 +4,18 @@ package check
 
 import (
 	"encoding/json"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 
+	_ "code.google.com/p/go.tools/go/gcimporter"
 	"code.google.com/p/go.tools/go/types"
 	"code.google.com/p/goconf/conf" // used for parsing config files
-)
-
-//Used for nagios formatted warnings
-const (
-	OK = iota
-	WARN
-	CRIT
 )
 
 type checker struct {
@@ -27,6 +24,8 @@ type checker struct {
 	Warnings map[string]metricResults
 	c        *conf.ConfigFile
 	Logger   *log.Logger
+	pkg      *types.Package
+	scope    *types.Scope
 }
 
 type metricThresholds struct {
@@ -60,6 +59,7 @@ func New(hostport, configFile string) (Checker, error) {
 		c:        c,
 		Logger:   log.New(os.Stderr, "LOG: ", log.Lshortfile),
 	}
+	hc.setupConstants()
 	return hc, nil
 }
 
@@ -106,7 +106,7 @@ func (hc *checker) CheckMetrics() error {
 	}
 	//iterate through all sections of tests
 	for _, sectionName := range hc.c.GetSections() {
-		if sectionName == "default" || sectionName == "nagios" {
+		if sectionName == "default" || sectionName == "nagios" || sectionName == "constants" {
 			continue
 		}
 		m := getConfigChecks(hc.c, sectionName)
@@ -124,14 +124,14 @@ func (hc *checker) checkMetric(m metricThresholds) metricResults {
 		if err != nil {
 			hc.Logger.Println(err)
 		}
-		resultType, result, err := types.Eval(checkVal, nil, nil)
+		resultType, result, err := types.Eval(checkVal, hc.pkg, hc.scope)
 		//error evaluating expression, don't store result
 		if err != nil {
 			hc.Logger.Println(err)
 			continue
 		}
 		//check that expression evaluated to bool
-		if !types.Identical(resultType, types.Typ[types.UntypedBool]) {
+		if !types.Identical(resultType, types.Typ[types.UntypedBool]) && !types.Identical(resultType, types.Typ[types.Bool]) {
 			hc.Logger.Println("Check: " + name + ": " + check + " does not evaluate to bool")
 			continue
 		}
@@ -177,4 +177,30 @@ func getConfigChecks(c *conf.ConfigFile, test string) metricThresholds {
 
 func (hc *checker) GetWarnings() map[string]metricResults {
 	return hc.Warnings
+}
+
+func (hc *checker) setupConstants() error {
+	constants, err := hc.c.GetOptions("constants")
+	if err != nil {
+		hc.Logger.Println(err)
+		return err
+	}
+	src := "package p\n"
+	for _, name := range constants {
+		val, _ := hc.c.GetString("constants", name)
+		src += "const " + name + " = " + val + "\n"
+	}
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "p", src, 0)
+	if err != nil {
+		hc.Logger.Println(err)
+		return err
+	}
+	hc.pkg, err = types.Check("p", fset, []*ast.File{file})
+	if err != nil {
+		hc.Logger.Println(err)
+		return err
+	}
+	hc.scope = hc.pkg.Scope().Child(0)
+	return nil
 }
