@@ -4,7 +4,6 @@ package check
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -78,14 +77,14 @@ func (hc *checker) getMetrics() error {
 		return err
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	d := json.NewDecoder(resp.Body)
 	if err != nil {
 		hc.Logger.Println(err)
 		return err
 	}
 	//unmarshal metrics
 	var metrics []metric
-	err = json.Unmarshal(body, &metrics)
+	err = d.Decode(&metrics)
 	if err != nil {
 		hc.Logger.Println(err)
 		return err
