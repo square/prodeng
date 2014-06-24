@@ -4,9 +4,10 @@ package check
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -26,6 +27,7 @@ type checker struct {
 	Metrics  map[string]metric
 	Warnings map[string]metricResults
 	c        *conf.ConfigFile
+	Logger   *log.Logger
 }
 
 type metricThresholds struct {
@@ -57,6 +59,7 @@ func New(hostport, configFile string) (Checker, error) {
 		Metrics:  make(map[string]metric),
 		Warnings: make(map[string]metricResults),
 		c:        c,
+		Logger:   log.New(os.Stderr, "LOG: ", log.Lshortfile),
 	}
 	return hc, nil
 }
@@ -71,17 +74,20 @@ func (hc *checker) getMetrics() error {
 	//get metrics from metrics collector
 	resp, err := http.Get("http://" + hc.hostport + "/api/v1/metrics.json?allowNaN=false")
 	if err != nil {
+		hc.Logger.Println(err)
 		return err
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		hc.Logger.Println(err)
 		return err
 	}
 	//unmarshal metrics
 	var metrics []metric
 	err = json.Unmarshal(body, &metrics)
 	if err != nil {
+		hc.Logger.Println(err)
 		return err
 	}
 	//store metrics in map, so they can be found easily by name
@@ -96,7 +102,7 @@ func (hc *checker) getMetrics() error {
 func (hc *checker) CheckMetrics() error {
 	err := hc.getMetrics()
 	if err != nil {
-		fmt.Println(err)
+		hc.Logger.Println(err)
 		return err
 	}
 	//iterate through all sections of tests
@@ -117,11 +123,12 @@ func (hc *checker) checkMetric(m metricThresholds) metricResults {
 	for name, check := range m.checks {
 		checkVal, err := hc.replaceNames(check)
 		if err != nil {
-			fmt.Println(err)
+			hc.Logger.Println(err)
 		}
 		_, result, err := types.Eval(checkVal, nil, nil)
 		if err != nil {
-			continue
+			hc.Logger.Println(err)
+			continue //error evaluating expression, don't store result
 		}
 		res.Checks[name], _ = strconv.ParseBool(result.String())
 	}

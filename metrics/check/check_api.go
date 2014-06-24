@@ -3,7 +3,7 @@
 package check
 
 type Checker interface {
-	//Returns Warnings specified in config file; e.g. to nagios, commandline
+	//Returns Warnings using input function. e.g. OutputWarnings(formats.Basic)
 	OutputWarnings(func(Checker, ...string) error, ...string) error
 
 	//Check the metrics against their thresholds
