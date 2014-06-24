@@ -26,14 +26,6 @@ type checker struct {
 	Metrics  map[string]metric
 	Warnings map[string]metricResults
 	c        *conf.ConfigFile
-	/*
-		routers          map[string]string //nagios use: maps service name to a regexp string that matches metrics collected for that service
-		nagServer        string            //used for nagios messages
-		serviceType      string            //mysql, postgres, etc.
-		hostname         string            //used for nagios messages
-		NSCA_BINARY_PATH string            //used for nagios messages
-		NSCA_CONFIG_PATH string            //used for nagios messages
-	*/
 }
 
 type metricThresholds struct {
@@ -70,7 +62,7 @@ func New(hostport, configFile string) (Checker, error) {
 }
 
 func (hc *checker) OutputWarnings(printer func(Checker, ...string) error, s ...string) error {
-	err := printer(hc, s[0])
+	err := printer(hc, s...)
 	return err
 }
 
@@ -99,8 +91,8 @@ func (hc *checker) getMetrics() error {
 	return nil
 }
 
-//Checks all metrics metrics
-// iterates through checks in config file and checks against collected metrics
+//Checks all metrics metrics.
+//iterates through checks in config file and checks against collected metrics
 func (hc *checker) CheckMetrics() error {
 	err := hc.getMetrics()
 	if err != nil {

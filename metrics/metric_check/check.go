@@ -19,11 +19,12 @@ var (
 // basic checker
 // starts loop and prints checks against config file
 func main() {
-	var hostport, configFile string
+	var hostport, configFile, nagConfigFile string
 	var stepSec int
 
 	flag.StringVar(&hostport, "hostport", "localhost:12345", "hostport to grab metrics")
 	flag.StringVar(&configFile, "conf", "", "config file to read metric thresholds")
+	flag.StringVar(&nagConfigFile, "nagConf", "", "config file to send nagios messages")
 	flag.IntVar(&stepSec, "step", 2, "time step in between sending messages to nagios")
 	flag.Parse()
 	if configFile == "" {
@@ -41,6 +42,7 @@ func main() {
 	ticker := time.NewTicker(step)
 	for _ = range ticker.C {
 		hc.CheckMetrics()
-		hc.OutputWarnings(formats.Nagios, "./test_nagios.config")
+		hc.OutputWarnings(formats.Basic)
+		//hc.OutputWarnings(formats.Nagios, "./test_nagios.config")
 	}
 }

@@ -9,6 +9,7 @@ type Checker interface {
 	//Check the metrics against their thresholds
 	CheckMetrics() error
 
-	//Group the warnings by their levels, i.e. CRIT, WARN, OK
+	//Return results of metric checks.
+	// Result in the form of sectionName -> check results
 	GetWarnings() map[string]metricResults
 }
