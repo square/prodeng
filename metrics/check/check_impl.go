@@ -124,10 +124,16 @@ func (hc *checker) checkMetric(m metricThresholds) metricResults {
 		if err != nil {
 			hc.Logger.Println(err)
 		}
-		_, result, err := types.Eval(checkVal, nil, nil)
+		resultType, result, err := types.Eval(checkVal, nil, nil)
+		//error evaluating expression, don't store result
 		if err != nil {
 			hc.Logger.Println(err)
-			continue //error evaluating expression, don't store result
+			continue
+		}
+		//check that expression evaluated to bool
+		if !types.Identical(resultType, types.Typ[types.UntypedBool]) {
+			hc.Logger.Println("Check: " + name + ": " + check + " does not evaluate to bool")
+			continue
 		}
 		res.Checks[name], _ = strconv.ParseBool(result.String())
 	}
