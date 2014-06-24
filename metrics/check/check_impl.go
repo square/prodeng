@@ -37,7 +37,7 @@ type metricThresholds struct {
 
 type metricResults struct {
 	Message string
-	Checks  map[string]bool // maps metric name to result
+	Checks  map[string]bool // maps check name to result
 }
 
 type metric struct {
