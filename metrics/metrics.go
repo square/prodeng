@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -43,8 +44,7 @@ type MetricContext struct {
 
 const jiffy = 100
 
-// TODO: use constants from package time
-const NS_IN_SEC = 1 * 1000 * 1000 * 1000
+const NS_IN_SEC = float64(time.Second) //nanoseconds in a second represented in float64
 
 // default percentiles to compute when serializing statstimer type
 // to stdout/json
@@ -118,108 +118,144 @@ func (m *MetricContext) Print() {
 
 // HttpJsonHandler metrics via json
 func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte("[\n"))
-
 	err := r.ParseForm()
 	if err != nil {
 		return
 	}
-	allowNaN := true      // if allowNaN is set to false, filter out NaN metric values
-	prependcomma := false //prependcomma tells the writer to insert a comma before writing the next line
+	allowNaN := true // if allowNaN is set to false, filter out NaN metric values
 	if n, ok := r.Form["allowNaN"]; ok && strings.ToLower(n[0]) == "false" {
 		allowNaN = false
 	}
-	//Expose only certain metrics as defined in url path
-	if strings.Contains(r.URL.Path, "gauges") {
-		prependcomma, _ = m.WriteGauges(allowNaN, prependcomma, w)
-	}
-	if strings.Contains(r.URL.Path, "counters") {
-		prependcomma, _ = m.WriteCounters(allowNaN, prependcomma, w)
-	}
-	if strings.Contains(r.URL.Path, "timers") {
-		prependcomma, _ = m.WriteTimers(allowNaN, prependcomma, w)
-	}
-	//default to all metrics if none are specified
-	if !strings.Contains(r.URL.Path, "timers") && !strings.Contains(r.URL.Path, "counters") && !strings.Contains(r.URL.Path, "gauges") {
-		prependcomma, _ = m.WriteGauges(allowNaN, prependcomma, w)
-		prependcomma, _ = m.WriteCounters(allowNaN, prependcomma, w)
-		prependcomma, _ = m.WriteTimers(allowNaN, prependcomma, w)
-	}
+	paths := ParseURL(r.URL.Path)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("[\n"))
+	WriteMetrics(m.FilterMetrics(paths...), allowNaN, w)
 	w.Write([]byte("]"))
 	w.Write([]byte("\n")) // Be nice to curl
 }
 
-//write all gauges
-func (m *MetricContext) WriteGauges(allowNaN, prependcomma bool, w io.Writer) (bool, error) {
-	for name, g := range m.Gauges {
-		if prependcomma {
-			w.Write([]byte(",\n"))
-		}
-		val := g.Get()
-		if allowNaN || !math.IsNaN(val) {
-			w.Write([]byte(fmt.Sprintf(`{"type": "gauge", "name": "%s", "value": %f}`,
-				name, val)))
-			prependcomma = true
-		} else {
-			prependcomma = false
-		}
-	}
-	return prependcomma, nil
+func ParseURL(url string) []string {
+	path := strings.SplitN(url, "metrics.json", 2)[1]
+	levels := strings.Split(path, "/")
+	return levels[1:]
 }
 
-//write all counters
-func (m *MetricContext) WriteCounters(allowNaN, prependcomma bool, w io.Writer) (bool, error) {
-	for name, c := range m.Counters {
-		if prependcomma {
-			w.Write([]byte(",\n"))
-		}
-		rate := c.ComputeRate()
-		if allowNaN || !math.IsNaN(rate) {
-			w.Write([]byte(fmt.Sprintf(
-				`{"type": "counter", "name": "%s", "value": %d, "rate": %f}`,
-				name, c.Get(), rate)))
-			prependcomma = true
-		} else {
-			prependcomma = false
+//filter metrics
+// return a map of metric name -> metric, return metrics that are of the given type and match the input regexp metricnames
+func (m *MetricContext) FilterMetrics(metricnames ...string) map[interface{}]interface{} {
+	types := metricnames[0]
+	metricsToCollect := map[interface{}]interface{}{}
+	if strings.Contains(types, "Gauges") {
+		for k, v := range m.Gauges {
+			metricsToCollect[k] = v
 		}
 	}
-	return prependcomma, nil
-}
-
-//write stat timers
-func (m *MetricContext) WriteTimers(allowNaN, prependcomma bool, w io.Writer) (bool, error) {
-	for name, s := range m.StatsTimers {
-		if prependcomma {
-			w.Write([]byte(","))
+	if strings.Contains(types, "Counters") {
+		for k, v := range m.Counters {
+			metricsToCollect[k] = v
 		}
-		type percentileData struct {
-			percentile string
-			value      float64
+	}
+	if strings.Contains(types, "StatsTimers") {
+		for k, v := range m.StatsTimers {
+			metricsToCollect[k] = v
 		}
-		var pctiles []percentileData
-		for _, p := range percentiles {
-			percentile, err := s.Percentile(p)
-			stuff := fmt.Sprintf("%.6f", p)
-			if err == nil {
-				pctiles = append(pctiles, percentileData{stuff, percentile})
+	}
+	if len(metricnames) == 1 {
+		return metricsToCollect
+	}
+	for nameFound, _ := range metricsToCollect {
+		for _, nameLookingFor := range metricnames[1:] {
+			re := regexp.MustCompile(nameLookingFor)
+			if !re.MatchString(nameFound.(string)) {
+				delete(metricsToCollect, nameFound)
 			}
 		}
-		data := struct {
-			Type        string
-			Name        string
-			Percentiles []percentileData
-		}{
-			"statstimer",
-			name,
-			pctiles,
-		}
-		b, err := json.Marshal(data)
-		if err != nil {
-			continue
-		}
-		w.Write(b)
-		prependcomma = true
 	}
+	return metricsToCollect
+}
+
+//write metrics given
+func WriteMetrics(m map[interface{}]interface{}, allowNaN bool, w io.Writer) error {
+	prependcomma := false
+	for name, met := range m {
+		switch metric := met.(type) {
+		case *Gauge:
+			prependcomma, _ = WriteGauge(name.(string), *metric, allowNaN, prependcomma, w)
+		case *Counter:
+			prependcomma, _ = WriteCounter(name.(string), *metric, allowNaN, prependcomma, w)
+		case *StatsTimer:
+			prependcomma, _ = WriteTimer(name.(string), *metric, allowNaN, prependcomma, w)
+		}
+	}
+	return nil
+}
+
+//write given gauge
+func WriteGauge(name string, g Gauge, allowNaN, prependcomma bool, w io.Writer) (bool, error) {
+	if prependcomma {
+		w.Write([]byte(",\n"))
+	}
+	val := g.Get()
+	if allowNaN || !math.IsNaN(val) {
+		w.Write([]byte(fmt.Sprintf(`{"type": "gauge", "name": "%s", "value": %f}`,
+			name, val)))
+		prependcomma = true
+	} else {
+		prependcomma = false
+	}
+
+	return prependcomma, nil
+}
+
+//write given counter
+func WriteCounter(name string, c Counter, allowNaN, prependcomma bool, w io.Writer) (bool, error) {
+	if prependcomma {
+		w.Write([]byte(",\n"))
+	}
+	rate := c.ComputeRate()
+	if allowNaN || !math.IsNaN(rate) {
+		w.Write([]byte(fmt.Sprintf(
+			`{"type": "counter", "name": "%s", "value": %d, "rate": %f}`,
+			name, c.Get(), rate)))
+		prependcomma = true
+	} else {
+		prependcomma = false
+	}
+	return prependcomma, nil
+}
+
+//write given timer
+func WriteTimer(name string, s StatsTimer, allowNaN, prependcomma bool, w io.Writer) (bool, error) {
+	type percentileData struct {
+		percentile string
+		value      float64
+	}
+	var pctiles []percentileData
+	for _, p := range percentiles {
+		percentile, err := s.Percentile(p)
+		stuff := fmt.Sprintf("%.6f", p)
+		if err == nil {
+			pctiles = append(pctiles, percentileData{stuff, percentile})
+		}
+	}
+	data := struct {
+		Type        string
+		Name        string
+		Percentiles []percentileData
+	}{
+		"statstimer",
+		name,
+		pctiles,
+	}
+	b, err := json.Marshal(data)
+	if err != nil {
+		return prependcomma, nil
+	}
+	if prependcomma {
+		w.Write([]byte(","))
+	}
+	w.Write(b)
+	prependcomma = true
 	return prependcomma, nil
 }
