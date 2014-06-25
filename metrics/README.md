@@ -51,4 +51,13 @@ resp, err := http.Get("http://localhost:12345/metrics.json")
 // Get metrics via http json and filter out metrics with NaN values
 resp, err := http.Get("http://localhost:12345/metrics.json?allowNaN=false")
 
+// Get counter metrics
+resp, err := http.Get("http://localhost:12345/metrics.json/counters")
+
+// Get counter gauges
+resp, err := http.Get("http://localhost:12345/metrics.json/gauges")
+
+// Get counter stats timers
+resp, err := http.Get("http://localhost:12345/metrics.json/timers")
+
 ```
