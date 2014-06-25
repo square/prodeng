@@ -46,10 +46,10 @@ go func() {
 }
 
 // Get metrics via http json. The trailing '/' is necessary.
-resp, err := http.Get("http://localhost:12345/metrics.json/")
+resp, err := http.Get("http://localhost:12345/metrics.json/Counters|Gauges|StatsTimers")
 
 // Get metrics via http json and filter out metrics with NaN values
-resp, err := http.Get("http://localhost:12345/metrics.json/?allowNaN=false")
+resp, err := http.Get("http://localhost:12345/metrics.json/Counters|Gauges|StatsTimers?allowNaN=false")
 
 // Get counter metrics
 resp, err := http.Get("http://localhost:12345/metrics.json/Counters")
