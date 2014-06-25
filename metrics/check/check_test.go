@@ -2,9 +2,12 @@ package check
 
 import (
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"testing"
 
+	"code.google.com/p/goconf/conf" // used for parsing config files
 	"github.com/square/prodeng/metrics"
 )
 
@@ -13,9 +16,24 @@ func initChecker(t testing.TB) checker {
 		hostport: "localhost:12345",
 		Metrics:  make(map[string]metric),
 		Warnings: make(map[string]metricResults),
+		Logger:   log.New(os.Stderr, "LOG: ", log.Lshortfile),
 	}
-
 	return hc
+}
+
+func initConfigFile() *conf.ConfigFile {
+	c := conf.NewConfigFile()
+	c.AddSection("constants")
+	c.AddOption("constants", "const1", "1")
+	c.AddOption("constants", "const2", "2")
+	c.AddSection("section1")
+	c.AddOption("section1", "check1", "value1")
+	c.AddOption("section1", "check2", "value2")
+	c.AddSection("section2")
+	c.AddOption("section2", "check1", "valueA")
+	c.AddOption("section2", "check2", "valueB")
+	c.AddOption("section2", "check3", "valueC")
+	return c
 }
 
 var (
@@ -189,4 +207,90 @@ func TestCheckMetrics3(t *testing.T) {
 	if result.Checks["3"] != true {
 		t.Errorf("Did not make check 3 correctly")
 	}
+}
+
+func TestCheckConstants1(t *testing.T) {
+	hc := initChecker(t)
+	hc.c = conf.NewConfigFile()
+	hc.c.AddSection("constants")
+	hc.c.AddOption("constants", "const1", "1")
+
+	m := metricThresholds{
+		checks: map[string]string{
+			"1": "const1 == 1",
+			"2": "const1 != 1",
+			"3": "const1 >= 0",
+		},
+	}
+
+	hc.setupConstants()
+	result := hc.checkMetric(m)
+
+	if result.Checks["1"] != true {
+		t.Errorf("Did not make check 1 correctly")
+	}
+	if result.Checks["2"] != false {
+		t.Errorf("Did not make check 2 correctly")
+	}
+	if result.Checks["3"] != true {
+		t.Errorf("Did not make check 3 correctly")
+	}
+}
+
+func TestCheckConstants2(t *testing.T) {
+	hc := initChecker(t)
+	hc.c = conf.NewConfigFile()
+	hc.c.AddSection("constants")
+	hc.c.AddOption("constants", "const1", "1")
+	hc.c.AddOption("constants", "const2", "2")
+
+	m := metricThresholds{
+		checks: map[string]string{
+			"1": "const1 == const2",
+			"2": "const1 != const2",
+			"3": "const1 >= const2",
+		},
+	}
+
+	hc.setupConstants()
+	result := hc.checkMetric(m)
+
+	if result.Checks["1"] != false {
+		t.Errorf("Did not make check 1 correctly")
+	}
+	if result.Checks["2"] != true {
+		t.Errorf("Did not make check 2 correctly")
+	}
+	if result.Checks["3"] != false {
+		t.Errorf("Did not make check 3 correctly")
+	}
+}
+
+func TestReadConfigFile(t *testing.T) {
+	c := initConfigFile()
+	m1 := getConfigChecks(c, "section1")
+	if m1.checks["check1"] != "value1" {
+		t.Error("did not get section1, check1 correct")
+	}
+	if m1.checks["check2"] != "value2" {
+		t.Error("did not get section1, check2 correct")
+	}
+	m2 := getConfigChecks(c, "section2")
+	if m2.checks["check1"] != "valueA" {
+		t.Error("did not get section2, check1 correct")
+	}
+	if m2.checks["check2"] != "valueB" {
+		t.Error("did not get section2, check2 correct")
+	}
+	if m2.checks["check3"] != "valueC" {
+		t.Error("did not get section2, check3 correct")
+	}
+}
+
+func TestAll1(t *testing.T) {
+	hc := initChecker(t)
+	hc.c = initConfigFile()
+	initMetricsJson()
+	CheckMetrics
+
 }
