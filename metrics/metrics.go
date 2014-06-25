@@ -5,6 +5,7 @@ package metrics
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"strings"
@@ -122,6 +123,7 @@ func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) 
 	w.Write([]byte("[\n"))
 
 	err := r.ParseForm()
+
 	allowNaN := true // if allowNaN is set to false, filter out NaN metric values
 	if err != nil {
 		return
@@ -129,8 +131,20 @@ func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) 
 	if n, ok := r.Form["allowNaN"]; ok && strings.ToLower(n[0]) == "false" {
 		allowNaN = false
 	}
+	if strings.Contains(r.URL.Path, "gauges") {
+		m.WriteGauges(allowNaN, false, w)
+	}
+	if strings.Contains(r.URL.Path, "counters") {
+		m.WriteCounters(allowNaN, false, w)
+	}
+	if strings.Contains(r.URL.Path, "timers") {
+		m.WriteTimers(allowNaN, false, w)
+	}
+	w.Write([]byte("]"))
+	w.Write([]byte("\n")) // Be nice to curl
+}
 
-	appendcomma := false
+func (m *MetricContext) WriteGauges(allowNaN, appendcomma bool, w io.Writer) error {
 	for name, g := range m.Gauges {
 		if appendcomma {
 			w.Write([]byte(",\n"))
@@ -144,7 +158,10 @@ func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) 
 			appendcomma = false
 		}
 	}
+	return nil
+}
 
+func (m *MetricContext) WriteCounters(allowNaN, appendcomma bool, w io.Writer) error {
 	for name, c := range m.Counters {
 		if appendcomma {
 			w.Write([]byte(",\n"))
@@ -159,7 +176,10 @@ func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) 
 			appendcomma = false
 		}
 	}
+	return nil
+}
 
+func (m *MetricContext) WriteTimers(allowNaN, appendcomma bool, w io.Writer) error {
 	for name, s := range m.StatsTimers {
 		if appendcomma {
 			w.Write([]byte(","))
@@ -193,7 +213,5 @@ func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) 
 		w.Write(b)
 		appendcomma = true
 	}
-
-	w.Write([]byte("]"))
-	w.Write([]byte("\n")) // Be nice to curl
+	return nil
 }
