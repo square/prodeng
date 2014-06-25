@@ -116,54 +116,62 @@ func (m *MetricContext) Print() {
 	}
 }
 
-// HttpJsonHandler exposes all metrics via json
-// TODO: too long, too ugly - fix
+// HttpJsonHandler metrics via json
 func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte("[\n"))
 
 	err := r.ParseForm()
-
-	allowNaN := true // if allowNaN is set to false, filter out NaN metric values
 	if err != nil {
 		return
 	}
+	allowNaN := true      // if allowNaN is set to false, filter out NaN metric values
+	prependcomma := false //prependcomma tells the writer to insert a comma before writing the next line
 	if n, ok := r.Form["allowNaN"]; ok && strings.ToLower(n[0]) == "false" {
 		allowNaN = false
 	}
+	//Expose only certain metrics as defined in url path
 	if strings.Contains(r.URL.Path, "gauges") {
-		m.WriteGauges(allowNaN, false, w)
+		prependcomma, _ = m.WriteGauges(allowNaN, prependcomma, w)
 	}
 	if strings.Contains(r.URL.Path, "counters") {
-		m.WriteCounters(allowNaN, false, w)
+		prependcomma, _ = m.WriteCounters(allowNaN, prependcomma, w)
 	}
 	if strings.Contains(r.URL.Path, "timers") {
-		m.WriteTimers(allowNaN, false, w)
+		prependcomma, _ = m.WriteTimers(allowNaN, prependcomma, w)
+	}
+	//default to all metrics if none are specified
+	if !strings.Contains(r.URL.Path, "timers") && !strings.Contains(r.URL.Path, "counters") && !strings.Contains(r.URL.Path, "gauges") {
+		prependcomma, _ = m.WriteGauges(allowNaN, prependcomma, w)
+		prependcomma, _ = m.WriteCounters(allowNaN, prependcomma, w)
+		prependcomma, _ = m.WriteTimers(allowNaN, prependcomma, w)
 	}
 	w.Write([]byte("]"))
 	w.Write([]byte("\n")) // Be nice to curl
 }
 
-func (m *MetricContext) WriteGauges(allowNaN, appendcomma bool, w io.Writer) error {
+//write all gauges
+func (m *MetricContext) WriteGauges(allowNaN, prependcomma bool, w io.Writer) (bool, error) {
 	for name, g := range m.Gauges {
-		if appendcomma {
+		if prependcomma {
 			w.Write([]byte(",\n"))
 		}
 		val := g.Get()
 		if allowNaN || !math.IsNaN(val) {
 			w.Write([]byte(fmt.Sprintf(`{"type": "gauge", "name": "%s", "value": %f}`,
 				name, val)))
-			appendcomma = true
+			prependcomma = true
 		} else {
-			appendcomma = false
+			prependcomma = false
 		}
 	}
-	return nil
+	return prependcomma, nil
 }
 
-func (m *MetricContext) WriteCounters(allowNaN, appendcomma bool, w io.Writer) error {
+//write all counters
+func (m *MetricContext) WriteCounters(allowNaN, prependcomma bool, w io.Writer) (bool, error) {
 	for name, c := range m.Counters {
-		if appendcomma {
+		if prependcomma {
 			w.Write([]byte(",\n"))
 		}
 		rate := c.ComputeRate()
@@ -171,17 +179,18 @@ func (m *MetricContext) WriteCounters(allowNaN, appendcomma bool, w io.Writer) e
 			w.Write([]byte(fmt.Sprintf(
 				`{"type": "counter", "name": "%s", "value": %d, "rate": %f}`,
 				name, c.Get(), rate)))
-			appendcomma = true
+			prependcomma = true
 		} else {
-			appendcomma = false
+			prependcomma = false
 		}
 	}
-	return nil
+	return prependcomma, nil
 }
 
-func (m *MetricContext) WriteTimers(allowNaN, appendcomma bool, w io.Writer) error {
+//write stat timers
+func (m *MetricContext) WriteTimers(allowNaN, prependcomma bool, w io.Writer) (bool, error) {
 	for name, s := range m.StatsTimers {
-		if appendcomma {
+		if prependcomma {
 			w.Write([]byte(","))
 		}
 		type percentileData struct {
@@ -205,13 +214,12 @@ func (m *MetricContext) WriteTimers(allowNaN, appendcomma bool, w io.Writer) err
 			name,
 			pctiles,
 		}
-
 		b, err := json.Marshal(data)
 		if err != nil {
 			continue
 		}
 		w.Write(b)
-		appendcomma = true
+		prependcomma = true
 	}
-	return nil
+	return prependcomma, nil
 }
