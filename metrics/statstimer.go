@@ -3,7 +3,9 @@
 package metrics
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"math"
 	"sort"
 	"sync"
@@ -122,4 +124,33 @@ func (s *StatsTimer) Percentile(percentile float64) (float64, error) {
 	ret := float64(in[nearest_rank]) / float64(s.timeUnit.Nanoseconds())
 
 	return ret, nil
+}
+
+func (s *StatsTimer) GetJson(name string, allowNaN bool) []byte {
+	type percentileData struct {
+		percentile string
+		value      float64
+	}
+	var pctiles []percentileData
+	for _, p := range percentiles {
+		percentile, err := s.Percentile(p)
+		stuff := fmt.Sprintf("%.6f", p)
+		if err == nil {
+			pctiles = append(pctiles, percentileData{stuff, percentile})
+		}
+	}
+	data := struct {
+		Type        string
+		Name        string
+		Percentiles []percentileData
+	}{
+		"statstimer",
+		name,
+		pctiles,
+	}
+	b, err := json.Marshal(data)
+	if err != nil {
+		return nil
+	}
+	return b
 }

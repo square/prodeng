@@ -45,10 +45,25 @@ go func() {
 	http.ListenAndServe("localhost:12345", nil)
 }
 
-// Get metrics via http json
-resp, err := http.Get("http://localhost:12345/metrics.json")
+// Get metrics via http json.
+resp, err := http.Get("http://localhost:12345/metrics.json/Counters|Gauges|StatsTimers")
 
 // Get metrics via http json and filter out metrics with NaN values
-resp, err := http.Get("http://localhost:12345/metrics.json?allowNaN=false")
+resp, err := http.Get("http://localhost:12345/metrics.json/Counters|Gauges|StatsTimers?allowNaN=false")
+
+// Get counter metrics
+resp, err := http.Get("http://localhost:12345/metrics.json/Counters")
+
+// Get gauges
+resp, err := http.Get("http://localhost:12345/metrics.json/Gauges")
+
+// Get stats timers
+resp, err := http.Get("http://localhost:12345/metrics.json/StatsTimers")
+
+// Get counters and gauges
+resp, err := http.Get("http://localhost:12345/metrics.json/Gauges|Counters")
+
+// Get gauges and limit to metrics matching memstat.Active
+resp, err := http.Get("http://localhost:12345/metrics.json/Gauges/memstat.Active")
 
 ```

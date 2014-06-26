@@ -3,10 +3,10 @@
 package metrics
 
 import (
-	"encoding/json"
 	"fmt"
-	"math"
+	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -34,6 +34,10 @@ type MetricContext struct {
 	StatsTimers   map[string]*StatsTimer
 }
 
+type metric interface {
+	GetJson(name string, allowNaN bool) []byte
+}
+
 // Creates a new metric context. A metric context specifies a namespace
 // time duration that is used as step and number of samples to keep
 // in-memory
@@ -42,8 +46,7 @@ type MetricContext struct {
 
 const jiffy = 100
 
-// TODO: use constants from package time
-const NS_IN_SEC = 1 * 1000 * 1000 * 1000
+const NS_IN_SEC = float64(time.Second) //nanoseconds in a second represented in float64
 
 // default percentiles to compute when serializing statstimer type
 // to stdout/json
@@ -115,85 +118,79 @@ func (m *MetricContext) Print() {
 	}
 }
 
-// HttpJsonHandler exposes all metrics via json
-// TODO: too long, too ugly - fix
+// HttpJsonHandler metrics via json
 func (m *MetricContext) HttpJsonHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte("[\n"))
-
 	err := r.ParseForm()
-	allowNaN := true // if allowNaN is set to false, filter out NaN metric values
 	if err != nil {
 		return
 	}
+	allowNaN := true // if allowNaN is set to false, filter out NaN metric values
 	if n, ok := r.Form["allowNaN"]; ok && strings.ToLower(n[0]) == "false" {
 		allowNaN = false
 	}
+	paths := ParseURL(r.URL.Path)
 
-	appendcomma := false
-	for name, g := range m.Gauges {
-		if appendcomma {
-			w.Write([]byte(",\n"))
-		}
-		val := g.Get()
-		if allowNaN || !math.IsNaN(val) {
-			w.Write([]byte(fmt.Sprintf(`{"type": "gauge", "name": "%s", "value": %f}`,
-				name, val)))
-			appendcomma = true
-		} else {
-			appendcomma = false
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("[\n"))
+	WriteMetrics(m.FilterMetrics(paths...), allowNaN, w)
+	w.Write([]byte("]"))
+	w.Write([]byte("\n")) // Be nice to curl
+}
+
+func ParseURL(url string) []string {
+	path := strings.SplitN(url, "metrics.json", 2)[1]
+	levels := strings.Split(path, "/")
+	return levels[1:]
+}
+
+//filter metrics
+// return a map of metric name -> metric, return metrics that are of the given type and match the input regexp metricnames
+func (m *MetricContext) FilterMetrics(metricnames ...string) map[interface{}]metric {
+	types := metricnames[0]
+	metricsToCollect := map[interface{}]metric{}
+	if strings.Contains(types, "Gauges") {
+		for k, v := range m.Gauges {
+			metricsToCollect[k] = v
 		}
 	}
-
-	for name, c := range m.Counters {
-		if appendcomma {
-			w.Write([]byte(",\n"))
-		}
-		rate := c.ComputeRate()
-		if allowNaN || !math.IsNaN(rate) {
-			w.Write([]byte(fmt.Sprintf(
-				`{"type": "counter", "name": "%s", "value": %d, "rate": %f}`,
-				name, c.Get(), rate)))
-			appendcomma = true
-		} else {
-			appendcomma = false
+	if strings.Contains(types, "Counters") {
+		for k, v := range m.Counters {
+			metricsToCollect[k] = v
 		}
 	}
-
-	for name, s := range m.StatsTimers {
-		if appendcomma {
-			w.Write([]byte(","))
+	if strings.Contains(types, "StatsTimers") {
+		for k, v := range m.StatsTimers {
+			metricsToCollect[k] = v
 		}
-		type percentileData struct {
-			percentile string
-			value      float64
-		}
-		var pctiles []percentileData
-		for _, p := range percentiles {
-			percentile, err := s.Percentile(p)
-			stuff := fmt.Sprintf("%.6f", p)
-			if err == nil {
-				pctiles = append(pctiles, percentileData{stuff, percentile})
+	}
+	if len(metricnames) == 1 {
+		return metricsToCollect
+	}
+	for nameFound, _ := range metricsToCollect {
+		for _, nameLookingFor := range metricnames[1:] {
+			re := regexp.MustCompile(nameLookingFor)
+			if !re.MatchString(nameFound.(string)) {
+				delete(metricsToCollect, nameFound)
 			}
 		}
-		data := struct {
-			Type        string
-			Name        string
-			Percentiles []percentileData
-		}{
-			"statstimer",
-			name,
-			pctiles,
-		}
+	}
+	return metricsToCollect
+}
 
-		b, err := json.Marshal(data)
-		if err != nil {
+//write metrics given
+func WriteMetrics(m map[interface{}]metric, allowNaN bool, w io.Writer) error {
+	prependcomma := false
+	for name, metric := range m {
+		if prependcomma {
+			w.Write([]byte(",\n"))
+			prependcomma = false
+		}
+		b := metric.GetJson(name.(string), allowNaN)
+		if b == nil {
 			continue
 		}
 		w.Write(b)
-		appendcomma = true
+		prependcomma = true
 	}
-
-	w.Write([]byte("]"))
-	w.Write([]byte("\n")) // Be nice to curl
+	return nil
 }
