@@ -45,7 +45,7 @@ go func() {
 	http.ListenAndServe("localhost:12345", nil)
 }
 
-// Get metrics via http json. The trailing '/' is necessary.
+// Get metrics via http json.
 resp, err := http.Get("http://localhost:12345/metrics.json/Counters|Gauges|StatsTimers")
 
 // Get metrics via http json and filter out metrics with NaN values
