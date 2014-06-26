@@ -286,11 +286,3 @@ func TestReadConfigFile(t *testing.T) {
 		t.Error("did not get section2, check3 correct")
 	}
 }
-
-func TestAll1(t *testing.T) {
-	hc := initChecker(t)
-	hc.c = initConfigFile()
-	initMetricsJson()
-	CheckMetrics
-
-}
