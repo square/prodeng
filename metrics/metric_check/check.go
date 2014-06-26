@@ -20,12 +20,14 @@ var (
 // starts loop and prints checks against config file
 func main() {
 	var hostport, configFile, nagConfigFile string
+	var basic, nagios bool
 	var stepSec int
 
 	flag.StringVar(&hostport, "hostport", "localhost:12345", "hostport to grab metrics")
 	flag.StringVar(&configFile, "conf", "", "config file to read metric thresholds")
 	flag.StringVar(&nagConfigFile, "nagConf", "", "config file to send nagios messages")
 	flag.IntVar(&stepSec, "step", 2, "time step in between sending messages to nagios")
+	flag.BoolVar(&basic, "basic", "true", "output check results in basic format")
 	flag.Parse()
 	if configFile == "" {
 		configFile = testconfigurationfile
