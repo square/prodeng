@@ -14,6 +14,7 @@ import (
 
 var (
 	testconfigurationfile = "./test.config"
+	testnagiosconfigfile  = "./test_nagios.config"
 )
 
 // basic checker
@@ -27,10 +28,14 @@ func main() {
 	flag.StringVar(&configFile, "conf", "", "config file to read metric thresholds")
 	flag.StringVar(&nagConfigFile, "nagConf", "", "config file to send nagios messages")
 	flag.IntVar(&stepSec, "step", 2, "time step in between sending messages to nagios")
-	flag.BoolVar(&basic, "basic", "true", "output check results in basic format")
+	flag.BoolVar(&basic, "basic", true, "output check results in basic format")
+	flag.BoolVar(&nagios, "nagios", false, "output check results in nagios format")
 	flag.Parse()
 	if configFile == "" {
 		configFile = testconfigurationfile
+	}
+	if nagConfigFile == "" {
+		nagConfigFile = testconfigurationfile
 	}
 
 	fmt.Println("starting metrics checker on: ", hostport)
@@ -44,7 +49,11 @@ func main() {
 	ticker := time.NewTicker(step)
 	for _ = range ticker.C {
 		hc.CheckMetrics()
-		hc.OutputWarnings(formats.Basic)
-		//hc.OutputWarnings(formats.Nagios, "./test_nagios.config")
+		if basic {
+			hc.OutputWarnings(formats.Basic)
+		}
+		if nagios {
+			hc.OutputWarnings(formats.Nagios, nagConfigFile)
+		}
 	}
 }

@@ -71,7 +71,7 @@ func (hc *checker) OutputWarnings(printer func(Checker, ...string) error, s ...s
 //gets metrics and unmarshals from JSON
 func (hc *checker) getMetrics() error {
 	//get metrics from metrics collector
-	resp, err := http.Get("http://" + hc.hostport + "/api/v1/metrics.json?allowNaN=false")
+	resp, err := http.Get("http://" + hc.hostport + "/api/v1/metrics.json/Counters|Gauges|StatTimers?allowNaN=false")
 	if err != nil {
 		hc.Logger.Println(err)
 		return err
