@@ -3,6 +3,7 @@
 package metrics
 
 import (
+	"fmt"
 	"math"
 	"sync"
 )
@@ -39,4 +40,13 @@ func (g *Gauge) Get() float64 {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	return g.v
+}
+
+func (g *Gauge) GetJson(name string, allowNaN bool) []byte {
+	val := g.Get()
+	if allowNaN || !math.IsNaN(val) {
+		return ([]byte(fmt.Sprintf(`{"type": "gauge", "name": "%s", "value": %f}`,
+			name, val)))
+	}
+	return nil
 }

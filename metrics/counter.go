@@ -3,6 +3,8 @@
 package metrics
 
 import (
+	"fmt"
+	"math"
 	"sync"
 	"sync/atomic"
 )
@@ -93,4 +95,14 @@ func (c *Counter) ComputeRate() float64 {
 	}
 
 	return c.rate
+}
+
+func (c *Counter) GetJson(name string, allowNaN bool) []byte {
+	rate := c.ComputeRate()
+	if allowNaN || !math.IsNaN(rate) {
+		return ([]byte(fmt.Sprintf(
+			`{"type": "counter", "name": "%s", "value": %d, "rate": %f}`,
+			name, c.Get(), rate)))
+	}
+	return nil
 }
