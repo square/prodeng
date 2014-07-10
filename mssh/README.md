@@ -10,6 +10,11 @@ Usage
 
 <code>mssh -r  host01,host02,host03 "uname -r" -c</code>
 
+Installing
+-----
+
+mssh is a rubygem: <code>gem install mssh</code>. http://rubygems.org/gems/mssh
+
 BUGS/TODO
 ---------
 
