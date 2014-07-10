@@ -10,6 +10,20 @@ Usage
 
 <code>mssh -r  host01,host02,host03 "uname -r" -c</code>
 
+<code>
+mssh --help
+Usage: mssh [options]
+    -r, --range RANGE                Requires a configured Range::Client. Use --hostlist if you do not use range
+        --hostlist x,y,z             List of hostnames to execute on
+    -f, --file FILE                  List of hostnames in a FILE use (/dev/stdin) for reading from stdin
+    -m, --maxflight 50               How many subprocesses? 50 by default
+    -t, --timeout 60                 How many seconds may each individual process take? 0 for no timeout
+    -g, --global_timeout 600         How many seconds for the whole shebang 0 for no timeout
+    -c, --collapse                   Collapse similar output 
+    -v, --verbose                    verbose 
+    -d, --debug                      Debug output
+</code>
+
 Installing
 -----
 
