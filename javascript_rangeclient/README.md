@@ -5,7 +5,7 @@ rangeclient synopsis
   * Create range object for communication with ranged
 
 ```
-  r = Range.new("range","80");
+  r = new Range("range","80");
 ```
 
 Examples
