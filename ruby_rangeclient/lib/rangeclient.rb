@@ -2,7 +2,7 @@
 
 require 'rubygems'
 require 'net/http'
-require 'cgi'
+require 'uri'
 
 class Range::Client
   attr_accessor :host, :port, :timeout, :rangeexception
@@ -28,7 +28,7 @@ class Range::Client
   end
   
   def expand(arg)
-    escaped_arg = CGI.escape arg
+    escaped_arg = URI.escape arg
     http = Net::HTTP.new(@host, @port)
     http.read_timeout = @timeout
     req = Net::HTTP::Get.new('/range/list?' + escaped_arg)
