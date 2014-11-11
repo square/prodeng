@@ -1,7 +1,7 @@
 # -*- encoding: utf-8 -*-
 Gem::Specification.new do |s|
   s.name        = "rangeclient"
-  s.version     = "0.0.12"
+  s.version     = "0.0.13"
   s.platform    = Gem::Platform::RUBY
   s.authors     = ["Evan Miller"]
   s.email       = ["evan@squareup.com"]
