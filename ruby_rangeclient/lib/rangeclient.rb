@@ -23,14 +23,17 @@ class Range::Client
     @port = ENV['RANGE_PORT'] if ENV.has_key?('RANGE_PORT')
     @port = options[:port] if options.member?(:port)
 
+    @ssl  = ENV['RANGE_SSL'] || options[:ssl]
+
     @timeout = 60
     @timeout = options[:timeout] if options.member?(:timeout)
   end
-  
+
   def expand(arg)
     escaped_arg = URI.escape arg
     http = Net::HTTP.new(@host, @port)
     http.read_timeout = @timeout
+    http.use_ssl = @ssl
     req = Net::HTTP::Get.new('/range/list?' + escaped_arg)
     resp = http.request(req)
     @rangeexception = resp['rangeexception']
