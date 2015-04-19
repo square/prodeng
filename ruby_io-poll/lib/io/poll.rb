@@ -3,7 +3,7 @@
 class IO
   module Poll
     arch, os = RUBY_PLATFORM.split('-')
-    if os =~ /^darwin/
+    if os =~ /^darwin|^freebsd/
       # /usr/include/sys/poll.h
       # Requestable events.  If poll(2) finds any of these set, they are
       # copied to revents on return.
@@ -25,9 +25,9 @@ class IO
       POLLERR        = 0x0008          #/* some poll error occurred */
       POLLHUP        = 0x0010          #/* file descriptor was "hung up" */
       POLLNVAL       = 0x0020          #/* requested events "invalid" */
-      
+
       POLLSTANDARD   = (POLLIN|POLLPRI|POLLOUT|POLLRDNORM|POLLRDBAND|POLLWRBAND|POLLERR|POLLHUP|POLLNVAL)
-      
+
     elsif os == "linux"
       # /usr/include/bits/poll.h
       #/* Event types that can be polled for.  These bits may be set in `events'
@@ -36,28 +36,28 @@ class IO
       POLLIN         = 0x001           #/* There is data to read.  */
       POLLPRI        = 0x002           #/* There is urgent data to read.  */
       POLLOUT        = 0x004           #/* Writing now will not block.  */
-      
+
       #/* These values are defined in XPG4.2.  */
       POLLRDNORM    = 0x040           #/* Normal data may be read.  */
       POLLRDBAND    = 0x080           #/* Priority data may be read.  */
       POLLWRNORM    = 0x100           #/* Writing now will not block.  */
       POLLWRBAND    = 0x200           #/* Priority data may be written.  */
-      
+
       #/* These are extensions for Linux.  */
       POLLMSG       = 0x400
       POLLREMOVE    = 0x1000
       POLLRDHUP     = 0x2000
-      
+
       #/* Event types always implicitly polled for.  These bits need not be set in
       #   `events', but they will appear in `revents' to indicate the status of
       #   the file descriptor.  */
       POLLERR        = 0x008          # /* Error condition.  */
       POLLHUP        = 0x010          # /* Hung up.  */
       POLLNVAL       = 0x020          # /* Invalid polling request.  */
-      
+
       # not part of poll.h on linux, but looks handy
       POLLSTANDARD   = (POLLIN|POLLPRI|POLLOUT|POLLRDNORM|POLLRDBAND|POLLWRBAND|POLLERR|POLLHUP|POLLNVAL)
-      
+
     else
       raise "unknown platform: #{RUBY_PLATFORM}"
     end
@@ -141,18 +141,18 @@ if __FILE__ == $0
     struct[:events] = IO::Poll::POLLSTANDARD
     struct[:revents] = 0
   end
-  
+
   # call poll
   # The resulting pollfds structure will have :revents populated with the poll results
   # The pollfds structure can be re-used
   ret = IO.poll(pollfds, pollfd_len, 4);
 
   STDERR.puts "ret: #{ret.inspect}"
-  
+
   # Implement IO.select() using poll(). Easy to use, terrible performance.
   using_poll = IO.select_using_poll([STDIN], [STDOUT], [], 5);
   using_kern_select = IO.select([STDIN], [STDOUT], [], 5);
-  
+
   STDERR.puts "IO.select_using_poll([#{STDIN.inspect}], [#{STDOUT.inspect}], [], 5):"
   STDERR.puts using_poll.inspect
   STDERR.puts "and inval is: #{IO::Poll::POLLNVAL}"
