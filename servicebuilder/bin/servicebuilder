@@ -285,14 +285,14 @@ wantservices.values.each do |s|
   modified_service, modified_log = s.create!
   # Restart the service if we've modified it
   if modified_service
-    puts "Running sv t #{stagedir}/#{s.name}"
-    system("sv t #{stagedir}/#{s.name}")
+    puts "Running sv try-restart #{stagedir}/#{s.name}"
+    system("sv try-restart #{stagedir}/#{s.name}")
     puts "Warning: Unable to restart service #{s.name}" unless $?.success?
   end
   # Restart the log agent if we've modified it
   if modified_log
-    puts "Running sv t #{stagedir}/#{s.name}/log"
-    system("sv t #{stagedir}/#{s.name}/log")
+    puts "Running sv try-restart #{stagedir}/#{s.name}/log"
+    system("sv try-restart #{stagedir}/#{s.name}/log")
     puts "Warning: Unable to restart log agent for service #{s.name}" unless $?.success?
   end
 
