@@ -70,17 +70,18 @@ EOF
 
   # Build the directory hierarchy in the staging directory.
   def create!
-    modified = false
+    modified_service, modified_log = false, false
+
     # Create directories if they need to be created
     if not File.directory?(@stagedir)
       puts "Creating directory #{@stagedir}"
       Kernel.system("mkdir", "-p", @stagedir)
-      modified = true
+      modified_service = true
     end
     if not File.directory?(File.join(@stagedir, "log"))
       puts "Creating directory #{@stagedir}/log"
       Kernel.system("mkdir", "-m", "0755", "-p", File.join(@stagedir, "log"))
-      modified = true
+      modified_log = true
     end
     # Create supervise and ok fifo manually to ensure proper permissions
     if not File.directory?(File.join(@stagedir, "supervise"))
@@ -106,9 +107,9 @@ EOF
     if not File.directory?(File.join(@stagedir, "log", "main"))
       puts "Creating directory #{@stagedir}/log/main"
       Kernel.system("mkdir", "-m", "0755", "-p", File.join(@stagedir, "log", "main"))
-      FileUtils.chown('nobody', 'nobody', 
+      FileUtils.chown('nobody', 'nobody',
                       File.join(@stagedir, "log", "main"))
-      modified = true
+      modified_log = true
     end
 
     # Test to see if we need to edit the run and log/run scripts
@@ -139,7 +140,7 @@ EOF
         f.write(self.runscript)
       end
       File.chmod(0755, File.join(@stagedir, "run"))
-      modified = true
+      modified_service = true
     end
 
     if writelog
@@ -148,11 +149,11 @@ EOF
         f.write(self.logscript)
       end
       File.chmod(0755, File.join(@stagedir, "log", "run"))
-      modified = true
+      modified_log = true
     end
 
     # return if we had to modify the directories
-    return modified
+    return modified_service, modified_log
   end
 
   # Symlink the staging directory into the active directory.
@@ -207,7 +208,6 @@ end
   usage() unless v
 end
 
-haveservices = {}
 wantservices = {}
 
 # read the config files, build the list of services that we want to exist
@@ -281,13 +281,20 @@ end
 # activate them by symlinking the staged service into the activate directory
 wantservices.values.each do |s|
   puts "Found #{s.name}"
-  modified = s.create!
+  modified_service, modified_log = s.create!
   # Restart the service if we've modified it
-  if modified
-    puts "Running sv t #{stagedir}/#{s.name}"
-    system("sv t #{stagedir}/#{s.name}")
-    puts "Warning: Unable to restart service #{s.name}" if $?
+  if modified_service
+    puts "Running sv try-restart #{stagedir}/#{s.name}"
+    system("sv try-restart #{stagedir}/#{s.name}")
+    puts "Warning: Unable to restart service #{s.name}" unless $?.success?
   end
+  # Restart the log agent if we've modified it
+  if modified_log
+    puts "Running sv try-restart #{stagedir}/#{s.name}/log"
+    system("sv try-restart #{stagedir}/#{s.name}/log")
+    puts "Warning: Unable to restart log agent for service #{s.name}" unless $?.success?
+  end
+
   s.activate!
 end
 
