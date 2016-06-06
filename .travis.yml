@@ -10,6 +10,3 @@ before_install:
 #  - sudo pip install cffi
 script: ./doit.sh
 
-notifications:
-  irc: "irc.freenode.net#square"
-
