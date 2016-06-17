@@ -50,6 +50,7 @@ module Elvis
       check_threads
       pw = Etc.getpwnam(user)
       
+      Process.maxgroups = 4096
       original_uid = Process.euid
       original_gid = Process.egid
       original_groups = Process.groups
