@@ -1,0 +1,3 @@
+[submodule "seccomp/kafel"]
+	path = seccomp/kafel
+	url = https://github.com/google/kafel.git
